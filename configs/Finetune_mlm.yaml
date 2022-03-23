@@ -1,0 +1,20 @@
+train_file: ['handa/data_filter_sim_train.json']
+test_file: ['handa/data_filter_sim_test.json']
+# each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
+bert_config: './configs/config_roberta.json'
+data_prefix: '../hanzi_filter'
+model: 'AlbefMlm'
+checkpoint_path: 'output/finetune_mlm_m1_pre'
+output_path: 'output/finetune_mlm_m1_pre'
+
+image_res: 368
+batch_size: 4
+grid_len: 4
+
+vision_width: 768
+embed_dim: 256
+mlm_probability: -1
+alpha: 0.4
+
+optimizer: {opt: adamW, lr: 1e-4, weight_decay: 0.02}
+schedular: {sched: cosine, lr: 1e-4, epochs: 60, min_lr: 1e-5, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 20, cooldown_epochs: 0}

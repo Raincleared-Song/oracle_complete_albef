@@ -1,0 +1,35 @@
+1. finetune_single_mlm_np
+setting: batch 4, normal mode, cross modality (1-7 the same), ratio 0.0
+test result: epoch 52, acc 72.25
+
+2. finetune_single_mlm_np_50
+setting: batch 4, normal mode, ratio 0.50
+test result: epoch 52, acc 65.64
+
+3. finetune_single_mlm_np_75
+setting: batch 4, normal mode, ratio 0.75
+test result: epoch 42, acc 59.53
+
+4. finetune_single_mlm_am
+setting: batch 8, all_mask mode, ratio 0.0
+test result: epoch 55, acc 76.6
+
+5. finetune_single_mlm_cb
+setting: batch 8, all_mask_char mode, ratio 0.0
+test result: epoch 10, acc 65.37
+
+6. finetune_single_mlm_ch
+setting: batch 8, char mode, ratio 0.0
+test result: epoch 59, acc 55.3
+
+7. finetune_single_mlm_wp
+setting: batch 4, normal mode, ratio 0.0, guwenbert-base
+test result: epoch 57, acc 60.3
+
+8. finetune_single_mlm_text
+setting: batch 4, normal mode, text modality, ratio 0.0
+test result: epoch 37, acc 53.3
+
+9. finetune_single_mlm_image
+setting: batch 4, normal mode, image modality, ratio 0.0
+test result: epoch 59, acc 62.04
