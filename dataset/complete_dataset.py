@@ -174,7 +174,7 @@ def process_single_complete(book: dict, config, pad_color=255):
         pad_img = resize_pad_image(cur_img, (img_res, img_res),
                                    pad_color=pad_color, mask_ratio=0.0)
         pad_mask_img = resize_pad_image(cur_img, (img_res, img_res),
-                                   pad_color=pad_color, mask_ratio=config['img_mask_ratio'])
+                                        pad_color=pad_color, mask_ratio=config['img_mask_ratio'])
         res_images.append((Image.fromarray(pad_img, mode=img_mode), Image.fromarray(pad_mask_img, mode=img_mode)))
     return res_images, res_caption
 

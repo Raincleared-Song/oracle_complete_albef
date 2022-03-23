@@ -209,21 +209,9 @@ def dump_data():
             if int(folder) != int(ch_idx):
                 err_log.write(f'{folder}\t[ch_code not match]\t{file}\n')
                 continue
-            # 不在字表中
-            # if char not in char_to_indexes:
-            #     err_log.write(f'{folder}\t[char not in char_to_indexes]\t{file}\n')
-            #     continue
-            # 在字表中，但编号不正确
-            # if int(ch_idx) not in char_to_indexes[char]:
-            #     err_log.write(f'{folder}\t[ch_idx not inconsistent]\t{file}\t{str(char_to_indexes[char])}\n')
-            #     continue
             if book_age.find('(', pos + 1) != -1 or book_age.find(')', pos_r + 1) != -1:
                 err_log.write(f'{folder}\t[double brackets]\t{file}\n')
                 continue
-            # if char == 'unk':
-            #     err_log.write(f'{folder}\t[unk char]\t{file}\n')
-            #     continue
-            # char = converter.convert(char)
             book_name, age = book_age[:pos], book_age[(pos + 1):-1]
             cur_folder_info.append((int(page), int(row), int(col), int(ch_idx), book_name, age, file))
             # cur_folder_ch.setdefault(char, 0)
@@ -231,17 +219,8 @@ def dump_data():
         if len(cur_folder_ch) == 0:
             err_log.write(f'{folder}\t[empty folder]\n')
             continue
-        # 以最多的汉字为准，其他汉字舍弃
-        # cur_folder_ch = sorted(list(cur_folder_ch.items()), key=lambda x: x[1], reverse=True)
-        # 按照 (page, row, col) 排序，假设是按照条号排序的
-        # cur_folder_info.sort(key=lambda x: x[:3])
-        # folder_char = cur_folder_ch[0][0]
-
         folder_chars = char_to_indexes[int(folder)]
         for page, row, col, ch_idx, book_name, age, file in cur_folder_info:
-            # if char != folder_char:
-            #     err_log.write(f'{folder}\t[not most char]\t{file}\n')
-            #     continue
             # 记录甲片和字形的对应关系，去除著录号前导 0
             book_name = book_name.strip().lstrip('0 ')
             for char in folder_chars:
