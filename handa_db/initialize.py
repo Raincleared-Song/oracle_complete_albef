@@ -174,14 +174,13 @@ def dump_data():
     将现有数据导入数据库
     """
     global db
-    err_log = open('output/err_db_3223.txt', 'w', encoding='utf-8')
-    char_to_indexes = {key: val for key, val in load_json('handa/char_to_indexes.json').items()
-                       if len(key) > 0 and '【' not in key}
+    err_log = open('output/err_db_323.txt', 'w', encoding='utf-8')
     index_to_chars = {int(key): val for key, val in load_json('handa/index_to_chars.json').items()}
 
     # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_37/ocr_char/'
     # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_392/ocr_char'
-    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_3223/ocr_char'
+    # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_3223/ocr_char'  # 5007
+    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_323/ocr_char'  # 6737
     folder_list = sorted(os.listdir(char_base), key=lambda x: int(x))
     bone_to_shapes = {}
     converter = opencc.OpenCC('t2s.json')
@@ -191,17 +190,19 @@ def dump_data():
             continue
         rel_path = os.path.join(char_base, folder)
         png_list = os.listdir(rel_path)
-        cur_folder_ch, cur_folder_info = {}, []
+        cur_folder_info = []
         for file in png_list:
             assert file.endswith('.png')
             file = file[:-4]
-            if file in ['甲骨文字編-李宗焜_0416_9_3_0848_unk_5(A7)包_']:
+            if file in ['甲骨文字編-李宗焜_0416_correct_8_3_0848_陶_(A7)包_',
+                        '甲骨文字編-李宗焜_0608_correct_7_3_1449_岳_(A7)E_',
+                        '甲骨文字編-李宗焜_1209_correct_8_3_3415_酒__屯005.']:
                 err_log.write(f'{folder}\t[bad format]\t{file}\n')
                 continue
             if not file.endswith(')'):
                 file += ')'
             try:
-                _, page, row, col, ch_idx, _, book_age = file.split('_')
+                _, page, _, row, col, ch_idx, _, book_age = file.split('_')
             except Exception as err:
                 print(folder, file)
                 raise err
@@ -214,12 +215,10 @@ def dump_data():
                 continue
             book_name, age = book_age[:pos], book_age[(pos + 1):-1]
             cur_folder_info.append((int(page), int(row), int(col), int(ch_idx), book_name, age, file))
-            # cur_folder_ch.setdefault(char, 0)
-            # cur_folder_ch[char] += 1
-        if len(cur_folder_ch) == 0:
+        if len(cur_folder_info) == 0:
             err_log.write(f'{folder}\t[empty folder]\n')
             continue
-        folder_chars = char_to_indexes[int(folder)]
+        folder_chars = index_to_chars[int(folder)]
         for page, row, col, ch_idx, book_name, age, file in cur_folder_info:
             # 记录甲片和字形的对应关系，去除著录号前导 0
             book_name = book_name.strip().lstrip('0 ')
@@ -241,7 +240,7 @@ def dump_data():
     char_font_index_to_id = {}
     err_log_match = open('output/err_db_match.txt', 'w', encoding='utf-8')
 
-    cur_new_char_id = 0
+    # cur_new_char_id = 0
 
     for part in handa_parts:
         meta = load_json(f'{handa_base}/{part}/oracle_meta_{part}.json')
@@ -271,24 +270,24 @@ def dump_data():
                         err_log_match.write(f'not match: [{book_name}] [{ch}]\n')
                     # 首先创建单字
                     if (ch, font, -1) not in char_font_index_to_id:
-                        # new_ch = Character.create(char_index=-1, char_byte=ch, font=font)
-                        # char_font_index_to_id[(ch, font, -1)] = new_ch.id
-                        char_font_index_to_id[(ch, font, -1)] = cur_new_char_id
-                        cur_new_char_id += 1
+                        new_ch = Character.create(char_index=-1, char_byte=ch, font=font)
+                        char_font_index_to_id[(ch, font, -1)] = new_ch.id
+                        # char_font_index_to_id[(ch, font, -1)] = cur_new_char_id
+                        # cur_new_char_id += 1
                     # 考虑不匹配的情况，match_case == 0
                     match_count['match_handa'] += 1
-                    # new_shape = CharShape.create(
-                    #     match_case=0,
-                    #     char_belong=char_font_index_to_id[(ch, font, -1)],
-                    #     coords=coords,
-                    #     noise_image=img,
-                    #     shape_image="",
-                    #     book_name=book_name,
-                    #     category="",
-                    #     page_code=-1,
-                    #     row_number=-1,
-                    #     col_number=-1,
-                    # )
+                    new_shape = CharShape.create(
+                        match_case=0,
+                        char_belong=char_font_index_to_id[(ch, font, -1)],
+                        coords=coords,
+                        noise_image=img,
+                        shape_image="",
+                        book_name=book_name,
+                        category="",
+                        page_code=-1,
+                        row_number=-1,
+                        col_number=-1,
+                    )
                 else:
                     # 考虑匹配的情况，match_case == 2，按条目顺序匹配
                     candidate_list = bone_to_shapes[key]
@@ -307,36 +306,36 @@ def dump_data():
                     page, row, col, ch_idx, age, shape_img, _ = candidate
                     # 首先创建单字
                     if (ch, font, ch_idx) not in char_font_index_to_id:
-                        # new_ch = Character.create(char_index=ch_idx, char_byte=ch, font=font)
-                        # char_font_index_to_id[(ch, font, ch_idx)] = new_ch.id
-                        char_font_index_to_id[(ch, font, ch_idx)] = cur_new_char_id
-                        cur_new_char_id += 1
-                    # new_shape = CharShape.create(
-                    #     match_case=match_case,
-                    #     char_belong=char_font_index_to_id[(ch, font, ch_idx)],
-                    #     coords=coords,
-                    #     noise_image=img,
-                    #     shape_image=shape_img,
-                    #     book_name=book_name,
-                    #     category=age,
-                    #     page_code=page,
-                    #     row_number=row,
-                    #     col_number=col,
-                    # )
-                # cur_book_shape_ids.append(str(new_shape.id))
+                        new_ch = Character.create(char_index=ch_idx, char_byte=ch, font=font)
+                        char_font_index_to_id[(ch, font, ch_idx)] = new_ch.id
+                        # char_font_index_to_id[(ch, font, ch_idx)] = cur_new_char_id
+                        # cur_new_char_id += 1
+                    new_shape = CharShape.create(
+                        match_case=match_case,
+                        char_belong=char_font_index_to_id[(ch, font, ch_idx)],
+                        coords=coords,
+                        noise_image=img,
+                        shape_image=shape_img,
+                        book_name=book_name,
+                        category=age,
+                        page_code=page,
+                        row_number=row,
+                        col_number=col,
+                    )
+                cur_book_shape_ids.append(str(new_shape.id))
             # 创建新甲片
-            # BoneRow.create(
-            #     book_name=book_name,
-            #     row_order=row_order,
-            #     modern_text=modern_text,
-            #     category=category,
-            #     url=url,
-            #     characters='\t'.join(cur_book_shape_ids),
-            #     l_bone_img=l_bone_img,
-            #     r_bone_img=r_bone_img,
-            # )
+            BoneRow.create(
+                book_name=book_name,
+                row_order=row_order,
+                modern_text=modern_text,
+                category=category,
+                url=url,
+                characters='\t'.join(cur_book_shape_ids),
+                l_bone_img=l_bone_img,
+                r_bone_img=r_bone_img,
+            )
     print(match_count)
-    exit()
+    # exit()
 
     # 处理剩下的字形, match_case == 1
     for book_name, char in tqdm(bone_to_shapes.keys(), desc='last'):
@@ -400,7 +399,5 @@ if __name__ == '__main__':
     # gen_book_char_stat()
     # gen_char_to_indexes()
     # exit()
-    # init_db()
-    # {'match_handa': 439348, 'match_shape': 0, 'all_match_1': 1396, 'all_match_more': 183}
-    # {'match_handa': 439281, 'match_shape': 0, 'all_match_1': 1448, 'all_match_more': 198}
+    init_db()
     dump_data()
