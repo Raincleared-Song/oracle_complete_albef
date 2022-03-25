@@ -207,6 +207,11 @@ class OracleCompleteSingleDataset(Dataset):
                         self.data.append(({'characters': [(ch, img)]}, 0))
                         if len(book['characters']) > 1:
                             self.data.append((book, cid))
+            elif self.mode == 'complete':
+                for book in books:
+                    for cid, (ch, img) in enumerate(book['characters']):
+                        if ch == '■':
+                            self.data.append({'characters': [(ch, img)]})
             else:
                 raise ValueError('config dataset_mode')
         self.config = config
@@ -258,6 +263,7 @@ class OracleCompleteSingleDataset(Dataset):
                             candidates.append((bid, tid))
                 assert len(candidates) > 0
                 masked_indices[random.choice(candidates)] = True
+            mask_id, mask_ch = -1, -1
         else:
             mask_char_num = - int(self.config['mlm_probability'])
             masked_indices = torch.full(input_ids.shape, False)
@@ -270,7 +276,9 @@ class OracleCompleteSingleDataset(Dataset):
                 ):
                     candidates.append(tid)
             assert len(candidates) > 0
-            masked_indices[random.choice(candidates)] = True
+            mask_id = random.choice(candidates)
+            mask_ch = input_ids[mask_id].item()
+            masked_indices[mask_id] = True
             assert torch.sum(masked_indices) == mask_char_num
 
         targets = input_ids.clone()
@@ -279,13 +287,14 @@ class OracleCompleteSingleDataset(Dataset):
         # 100% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
         input_ids[masked_indices] = self.tokenizer.mask_token_id
 
-        return input_ids, targets, masked_indices.tolist()[1:-1]
+        return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def mask_by_id(self, input_ids, mask_id):
         masked_indices = torch.full(input_ids.shape, False)
         masked_indices[mask_id] = True
         assert input_ids[mask_id].item() not in [self.tokenizer.pad_token_id,
                                                  self.tokenizer.cls_token_id, self.tokenizer.sep_token_id]
+        mask_ch = input_ids[mask_id].item()
 
         targets = input_ids.clone()
         targets[~masked_indices] = -100  # We only compute loss on masked tokens
@@ -293,31 +302,32 @@ class OracleCompleteSingleDataset(Dataset):
         # 100% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
         input_ids[masked_indices] = self.tokenizer.mask_token_id
 
-        return input_ids, targets, masked_indices.tolist()[1:-1]
+        return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def __getitem__(self, index):
+        identity = self.data[index]['book_name'] + '-' + str(self.data[index]['row_order'])
         if self.mode in ['normal', 'char']:
             images, tokens = process_single_complete(self.data[index], self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
-                input_ids, targets, masked_indices = self.random_mask(input_ids)
+                input_ids, targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
                 assert len(images) == len(masked_indices)
                 images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
                                     for img, masked in zip(images, masked_indices)], dim=0)
-                return images, input_ids, targets
+                return images, input_ids, targets, identity, mask_id, mask_ch
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in images], dim=0)
-                return images, input_ids
+                return images, input_ids, identity
         else:
             book, mid = self.data[index]
             images, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
-                input_ids, targets, masked_indices = self.mask_by_id(input_ids, mid + 1)
+                input_ids, targets, masked_indices, mask_id, mask_ch = self.mask_by_id(input_ids, mid + 1)
                 assert len(images) == len(masked_indices)
                 images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
                                     for img, masked in zip(images, masked_indices)], dim=0)
-                return images, input_ids, targets
+                return images, input_ids, targets, identity, mask_id, mask_ch
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in images], dim=0)
-                return images, input_ids
+                return images, input_ids, identity

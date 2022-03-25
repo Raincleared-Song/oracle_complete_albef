@@ -29,7 +29,7 @@ class BoneRow(BaseModel):
     category = CharField(null=False, max_length=7, column_name='category')
     # 源数据在汉达文库中的 url 后缀，最大长度 511 字符
     url = CharField(null=False, max_length=511, column_name='url')
-    # 包含单字的列表，以 '\t' 分隔的字符串，每个元素都是字形表 Shape 的主键 id
+    # 包含单字的列表，以 '\t' 分隔的字符串，每个元素都是字形表 CharShape.id
     characters = TextField(null=False, column_name='characters')
     # 甲片图的路径，最大长度 511 字符
     l_bone_img = CharField(null=False, max_length=511, column_name='l_bone_img')
@@ -47,7 +47,7 @@ class BoneRow(BaseModel):
 
 class Character(BaseModel):
     """
-    单字表，一个单字包含多个字形，(编码-字体) 不一定唯一对应一个单字！同一个汉字可能对应多个 Character!
+    单字表，一个单字包含多个字形，(编码-字体) 不一定唯一对应一个单字！同一个汉字可能对应多个 Character（编码不同）!
     """
     # 自增 id 域，主键
     id = AutoField()
@@ -76,7 +76,7 @@ class CharShape(BaseModel):
     # 根据 (著录号 - 无字体汉字) 进行匹配
     # 0-只在汉达中，不在摹本中；1-只在摹本中，不在汉达中；2-同时存在，数据可以对上，一一对应；3-同时存在，数据可对上，多于1条
     match_case = IntegerField(null=False, index=True, column_name='match_case')
-    # 属于哪一个单字 id，索引字段
+    # 属于哪一个单字 Character.id，索引字段
     char_belong = IntegerField(null=False, index=True, column_name='char_belong')
     # 在汉达文库甲片图中的坐标信息，可能为空（match_case == 1）
     coords = CharField(null=False, max_length=63, column_name='coords')
@@ -362,17 +362,37 @@ def dump_data():
                 row_number=row,
                 col_number=col,
             )
+    # {'match_handa': 433321, 'match_shape': 21619, 'all_match_1': 6737, 'all_match_more': 869}
     print(match_count)
     err_log_match.close()
-    print(BoneRow.select().count())
-    print(Character.select().count())
-    print(CharShape.select().count())
-    print('count2:', CharShape.select().where(CharShape.match_case == 2).count())
-    print(CharShape.select().where(CharShape.match_case == 3).count())
+    print(BoneRow.select().count())  # 125697
+    print(Character.select().count())  # 4718
+    print(CharShape.select().count())  # 462546
+    print('count2:', CharShape.select().where(CharShape.match_case == 2).count())  # 6737
+    print(CharShape.select().where(CharShape.match_case == 3).count())  # 869
     save_json([key + (val,) for key, val in char_font_index_to_id.items()], 'output/char_font_index_to_id.json')
 
 
 def check_data():
+    fin = open('output/finetune_single_mlm_np/log_case_test_52.txt', 'r', encoding='utf-8')
+    lines = fin.readlines()
+    fin.close()
+    data = load_json('../hanzi_filter/handa/data_filter_sim_test.json')
+    fout = open('output/finetune_single_mlm_np/log_case_test_52_book.txt', 'w', encoding='utf-8')
+    cur_idx = 0
+    for line in lines:
+        if not line[0].isdigit():
+            fout.write(line)
+        else:
+            tokens = line.strip().split('\t')
+            assert int(tokens[0]) == cur_idx
+            book = data[cur_idx]
+            book_order = book['book_name'] + '-' + str(book['row_order'])
+            fout.write(f'{cur_idx}\t{book_order}    {tokens[1]}\n')
+            cur_idx += 1
+    fout.close()
+    exit()
+
     handa_base = '/var/lib/shared_volume/data/private/songchenyang/hanzi_filter/handa'
     handa_parts = ['B', 'D', 'H', 'L', 'S', 'T', 'W', 'Y', 'HD']
     for part in handa_parts:
@@ -396,6 +416,8 @@ def get_char_to_index():
 
 
 if __name__ == '__main__':
+    check_data()
+    exit()
     # gen_book_char_stat()
     # gen_char_to_indexes()
     # exit()

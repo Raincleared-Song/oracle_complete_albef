@@ -50,6 +50,13 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    for k in config['topk']:
+        metric_logger.add_meter(f'hit_correct_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+        metric_logger.add_meter(f'rank_correct_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:07}'))
+        metric_logger.add_meter(f'rank_instance_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:07}'))
 
     header = 'Train Epoch: [{}]'.format(epoch)
     print_freq = 10
@@ -60,7 +67,7 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths) \
+    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_chs) \
             in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
@@ -71,9 +78,11 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         labels = labels.to(device, non_blocking=True)
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
+        mask_ids = mask_ids.to(device, non_blocking=True)
 
-        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, 'train')
+        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
+            rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
+            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, mask_ids, mask_chs, 'train')
 
         loss_mlm.backward()
         optimizer.step()
@@ -82,6 +91,12 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
+        update_map = {}
+        for k in config['topk']:
+            update_map[f'hit_correct_{k}'] = hit_correct[k]
+            update_map[f'rank_correct_{k}'] = rank_correct_num[k]
+            update_map[f'rank_instance_{k}'] = rank_instance_num[k]
+        metric_logger.update(**update_map)
 
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
@@ -93,8 +108,11 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
             wrong_chars = [f'{tokenizer.convert_ids_to_tokens(ch)} {tokenizer.convert_ids_to_tokens(wch)} {str(idx)}'
                            for ch, wch, idx in wrong_chars]
             f_case.write('Wrong: ' + str(wrong_chars) + '\n\n')
-            for sent in ori_inputs:
-                f_case.write(str(data_idx) + '\t' + str(tokenizer.convert_ids_to_tokens(sent)) + '\n')
+            assert len(book_orders) == len(ori_inputs) == len(topk_ids)
+            for sent, book_order, topk_id in zip(ori_inputs, book_orders, topk_ids):
+                f_case.write(str(data_idx) + '\t' +
+                             str(tokenizer.convert_ids_to_tokens(sent)) + '\t' + book_order + '\n')
+                f_case.write('Topk: ' + str(tokenizer.convert_ids_to_tokens(topk_id)) + '\n')
                 data_idx += 1
             f_case.write('------------------------------\n\n')
         f_case.flush()
@@ -105,6 +123,10 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
     res['global_accuracy'] = round(100 * meters['correct_num'].total / meters['instance_num'].total, 2)
+    for k in config['topk']:
+        res[f'global_hit_{k}'] = round(100 * meters[f'hit_correct_{k}'].total / meters['instance_num'].total, 2)
+        res[f'global_rank_acc_{k}'] = round(
+            100 * meters[f'rank_correct_{k}'].total / meters[f'rank_instance_{k}'].total, 2)
 
     if save_cases:
         f_case.close()
@@ -225,6 +247,13 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    for k in config['topk']:
+        metric_logger.add_meter(f'hit_correct_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+        metric_logger.add_meter(f'rank_correct_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:07}'))
+        metric_logger.add_meter(f'rank_instance_{k}', utils.SmoothedValue(
+            window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:07}'))
 
     header = 'Test Epoch: [{}]'.format(epoch)
     print_freq = 10
@@ -233,7 +262,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths) \
+    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_chs) \
             in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
@@ -242,13 +271,21 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         labels = labels.to(device, non_blocking=True)
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
+        mask_ids = mask_ids.to(device, non_blocking=True)
 
-        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, 'test')
+        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
+        rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
+            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, mask_ids, mask_chs, 'test')
 
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
+        update_map = {}
+        for k in config['topk']:
+            update_map[f'hit_correct_{k}'] = hit_correct[k]
+            update_map[f'rank_correct_{k}'] = rank_correct_num[k]
+            update_map[f'rank_instance_{k}'] = rank_instance_num[k]
+        metric_logger.update(**update_map)
 
         if save_cases:
             for ch, idx in correct_chars:
@@ -257,8 +294,11 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
             wrong_chars = [f'{tokenizer.convert_ids_to_tokens(ch)} {tokenizer.convert_ids_to_tokens(wch)} {str(idx)}'
                            for ch, wch, idx in wrong_chars]
             f_case.write('Wrong: ' + str(wrong_chars) + '\n\n')
-            for sent in ori_inputs:
-                f_case.write(str(data_idx) + '\t' + str(tokenizer.convert_ids_to_tokens(sent)) + '\n')
+            assert len(book_orders) == len(ori_inputs) == len(topk_ids)
+            for sent, book_order, topk_id in zip(ori_inputs, book_orders, topk_ids):
+                f_case.write(str(data_idx) + '\t' +
+                             str(tokenizer.convert_ids_to_tokens(sent)) + '\t' + book_order + '\n')
+                f_case.write('Topk: ' + str(tokenizer.convert_ids_to_tokens(topk_id)) + '\n')
                 data_idx += 1
             f_case.write('------------------------------\n\n')
         f_case.flush()
@@ -269,6 +309,10 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
     res['global_accuracy'] = round(100 * meters['correct_num'].total / meters['instance_num'].total, 2)
+    for k in config['topk']:
+        res[f'global_hit_{k}'] = round(100 * meters[f'hit_correct_{k}'].total / meters['instance_num'].total, 2)
+        res[f'global_rank_acc_{k}'] = round(
+            100 * meters[f'rank_correct_{k}'].total / meters[f'rank_instance_{k}'].total, 2)
 
     if save_cases:
         f_case.close()
@@ -379,7 +423,7 @@ if __name__ == '__main__':
     parser.add_argument('--resume', default=False, type=bool)
     parser.add_argument('--text_encoder', default='')  # MODIFIED
     parser.add_argument('--text_tokenizer', default='../guwenbert-base')  # MODIFIED
-    parser.add_argument('--device', default='cuda')
+    parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=100, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
