@@ -78,7 +78,7 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     metric_logger.log_default_metric()
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
-
+    res['global_loss'] = meters['loss'].global_avg
     return res
 
 
@@ -211,7 +211,7 @@ def valid_epoch(args, model, data_loader, epoch, device, config):
     metric_logger.log_default_metric()
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
-
+    res['global_loss'] = meters['loss'].global_avg
     return res
 
 
