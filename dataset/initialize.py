@@ -186,6 +186,8 @@ def process_sharpen_single(config, img_path):
         assert img.shape[2] <= 4
         img = np.transpose(img, (2, 0, 1))
         assert img.shape[1:] == pad_shape, str(img.shape)
+    if config['scale']:
+        img = img.astype(np.float) / 256.0
     return img
 
 

@@ -65,7 +65,10 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         optimizer.step()
 
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-        metric_logger.update(n=config['batch_size'], loss=loss.item())
+        if config['scale']:
+            metric_logger.update(n=config['batch_size'], loss=loss.item() * 1e4)
+        else:
+            metric_logger.update(n=config['batch_size'], loss=loss.item())
 
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
@@ -198,7 +201,10 @@ def valid_epoch(args, model, data_loader, epoch, device, config):
 
         loss = model(data_dict, 'valid')
 
-        metric_logger.update(n=config['batch_size'], loss=loss.item())
+        if config['scale']:
+            metric_logger.update(n=config['batch_size'], loss=loss.item() * 1e4)
+        else:
+            metric_logger.update(n=config['batch_size'], loss=loss.item())
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()

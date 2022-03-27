@@ -42,5 +42,7 @@ class UNet(nn.Module):
             loss = self.loss_func(x, labels)
             return loss
         else:
+            if self.config['scale']:
+                x *= 256.0
             x = torch.clamp(x, 0, 255)
             return x, labels
