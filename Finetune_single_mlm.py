@@ -324,10 +324,10 @@ def test(args, config, model, data_loader, tokenizer=None):
     device = torch.device(args.device)
 
     # get all models
-    if os.path.isdir(config['checkpoint_path']):
-        model_list = sorted([m for m in os.listdir(config['checkpoint_path']) if m.endswith('.pth')])
+    if os.path.isdir(args.checkpoint):
+        model_list = sorted([m for m in os.listdir(args.checkpoint) if m.endswith('.pth')])
     else:
-        model_list = [config['checkpoint_path']]
+        model_list = [args.checkpoint]
 
     for cp_path in model_list:
 
@@ -335,7 +335,7 @@ def test(args, config, model, data_loader, tokenizer=None):
         assert pos >= 0
         epoch = int(cp_path[(pos + 1):(pos + 3)])
 
-        cp_path = os.path.join(config['checkpoint_path'], cp_path)
+        cp_path = os.path.join(args.checkpoint, cp_path)
         # test every checkpoint
         checkpoint = torch.load(cp_path, map_location='cpu')
         state_dict = checkpoint['model']

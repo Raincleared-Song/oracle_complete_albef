@@ -1,6 +1,8 @@
 import os
 import re
 import opencc
+import random
+import shutil
 from tqdm import tqdm
 from utils import load_json, save_json
 from peewee import IntegerField, TextField, AutoField, Model, SqliteDatabase, CharField
@@ -188,12 +190,11 @@ def dump_data():
         if int(folder) not in index_to_chars:
             err_log.write(f'{folder}\t[folder index not in table]\n')
             continue
-        rel_path = os.path.join(char_base, folder)
-        png_list = os.listdir(rel_path)
+        png_list = os.listdir(os.path.join(char_base, folder))
         cur_folder_info = []
-        for file in png_list:
-            assert file.endswith('.png')
-            file = file[:-4]
+        for o_file in png_list:
+            assert o_file.endswith('.png')
+            file = o_file[:-4]
             if file in ['甲骨文字編-李宗焜_0416_correct_8_3_0848_陶_(A7)包_',
                         '甲骨文字編-李宗焜_0608_correct_7_3_1449_岳_(A7)E_',
                         '甲骨文字編-李宗焜_1209_correct_8_3_3415_酒__屯005.']:
@@ -214,7 +215,7 @@ def dump_data():
                 err_log.write(f'{folder}\t[double brackets]\t{file}\n')
                 continue
             book_name, age = book_age[:pos], book_age[(pos + 1):-1]
-            cur_folder_info.append((int(page), int(row), int(col), int(ch_idx), book_name, age, file))
+            cur_folder_info.append((int(page), int(row), int(col), int(ch_idx), book_name, age, o_file))
         if len(cur_folder_info) == 0:
             err_log.write(f'{folder}\t[empty folder]\n')
             continue
@@ -228,7 +229,7 @@ def dump_data():
                     # 最后一个 bool 表示是否与汉达匹配成功
                     bone_to_shapes[(book_name, char)] = []
                 bone_to_shapes[(book_name, char)].append(
-                    [page, row, col, ch_idx, age, os.path.join(rel_path, file), False])
+                    [page, row, col, ch_idx, age, os.path.join(folder, file), False])
     save_json([key + tuple(val) for key, val in bone_to_shapes.items()], 'output/bone_to_shapes.json')
     err_log.close()
 
@@ -248,11 +249,11 @@ def dump_data():
             book_name, row_order, modern_text, category, url, l_bone_img, r_bone_img = \
                 book['book_name'], book['row_order'], book['modern_text'], book['category'], \
                 book['url'], book['l_bone_img'], book['r_bone_img']
-            l_bone_img = f'{handa_base}/{part}/bones/{l_bone_img}'
-            r_bone_img = f'{handa_base}/{part}/bones/{r_bone_img}'
+            l_bone_img = f'{part}/bones/{l_bone_img}'
+            r_bone_img = f'{part}/bones/{r_bone_img}'
             cur_book_shape_ids = []
             for char in book['l_chars']:
-                ch, coords, img = char['char'], char['coords'], f'{handa_base}/{part}/characters/{char["img"]}'
+                ch, coords, img = char['char'], char['coords'], f'{part}/characters/{char["img"]}'
                 font = re.findall(r"<font face='([^']+)'>", ch)
                 font = list(set(font))
                 assert len(font) <= 1
@@ -415,9 +416,64 @@ def get_char_to_index():
         pass
 
 
+def test_log_to_data(path: str, batch_size=4):
+    test_data = load_json('../hanzi_filter/handa/data_filter_sim_test.json')
+    with open(path, 'r', encoding='utf-8') as fin:
+        lines = fin.readlines()
+    data_mask, cur_pos_batch, cur_idx = [], [], 0
+    for line in lines:
+        positions = re.findall(r'\(([0-9]+), ([0-9]+)\)', line)
+        cur_pos_batch += [(int(t[0]), int(t[1]) - 1) for t in positions]
+        if len(cur_pos_batch) >= batch_size:
+            assert len(cur_pos_batch) == batch_size
+            cur_pos_batch.sort()
+            for sid, cid in cur_pos_batch:
+                data_mask.append((test_data[cur_idx + sid], cid))
+            cur_pos_batch = []
+            cur_idx += batch_size
+    if len(cur_pos_batch) > 0:
+        assert len(test_data) == cur_idx + len(cur_pos_batch)
+        cur_pos_batch.sort()
+        for sid, cid in cur_pos_batch:
+            data_mask.append((test_data[cur_idx + sid], cid))
+    output_path = path.replace('.txt', '_data.json')
+    save_json(data_mask, output_path)
+
+
+def gen_sharpen_dataset():
+    """
+    train: 6055, valid: 682
+    """
+    random.seed(100)
+    handa_base = '/var/lib/shared_volume/data/private/songchenyang/hanzi_filter/handa'
+    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_323/ocr_char'
+    train_path = ['handa_sharpen/train/noise', 'handa_sharpen/train/label']
+    valid_path = ['handa_sharpen/valid/noise', 'handa_sharpen/valid/label']
+    os.makedirs(train_path[0], exist_ok=True)
+    os.makedirs(train_path[1], exist_ok=True)
+    os.makedirs(valid_path[0], exist_ok=True)
+    os.makedirs(valid_path[1], exist_ok=True)
+    init_db()
+    for shape in tqdm(CharShape.select().where(CharShape.match_case == 2)):
+        assert isinstance(shape, CharShape)
+        ch = Character.select().where(Character.id == shape.char_belong)
+        assert len(ch) == 1 and isinstance(ch[0], Character)
+        ch = ch[0].char_byte
+        file_name = f'{shape.book_name}_{shape.page_code}_{shape.row_number}_{shape.col_number}_{ch}.png'
+        if random.random() <= 0.9:
+            target_path = train_path
+        else:
+            target_path = valid_path
+        shutil.copy(os.path.join(handa_base, str(shape.noise_image)), os.path.join(target_path[0], file_name))
+        shutil.copy(os.path.join(char_base, str(shape.shape_image)), os.path.join(target_path[1], file_name))
+
+
 if __name__ == '__main__':
-    check_data()
+    # gen_sharpen_dataset()
+    test_log_to_data('output/finetune_single_mlm_np_neo/log_case_test_52.txt')
     exit()
+    # check_data()
+    # exit()
     # gen_book_char_stat()
     # gen_char_to_indexes()
     # exit()

@@ -1,9 +1,13 @@
 import torch
+import numpy as np
+from PIL import Image
 from torch.utils.data import DataLoader
+from dataset.data_utils import resize_pad_image
 from dataset.complete_dataset import OracleCompleteDataset, OracleCompleteSingleDataset
+from dataset.sharpen_dataset import SharpenDataset
 
 
-def create_dataset(dataset, mode, config, tokenizer):
+def create_dataset(dataset, mode, config, tokenizer=None):
     if dataset == 'pretrain':
         # MODIFIED
         dataset = OracleCompleteDataset(config, mode, tokenizer, add_mask=False)
@@ -16,6 +20,10 @@ def create_dataset(dataset, mode, config, tokenizer):
 
     elif dataset == 'finetune_single_mlm':
         dataset = OracleCompleteSingleDataset(config, mode, tokenizer, add_mask=True)
+        return dataset
+
+    elif dataset == 'sharpen_unet':
+        dataset = SharpenDataset(config, mode)
         return dataset
 
     else:
@@ -73,6 +81,8 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
     max_len = max(len(img) for img, _, _, _, _, _ in batch)
     for img, input_ids, label, book_order, mask_id, mask_ch in batch:
         assert len(img) + 2 == len(input_ids) == len(label)
+        if modality == 'image':
+            mask_id -= 1
         book_orders.append(book_order)
         mask_ids.append(mask_id)
         mask_chs.append(mask_ch)
@@ -136,7 +146,8 @@ def create_sampler(datasets, shuffles, num_tasks, global_rank):
     return samplers
 
 
-def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
+def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns,
+                  worker_init_fn=None, generator=None):
     loaders = []
     for dataset, sampler, bs, n_worker, is_train, collate_fn in zip(datasets, samplers, batch_size, num_workers,
                                                                     is_trains, collate_fns):
@@ -155,6 +166,43 @@ def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collat
             shuffle=shuffle,
             collate_fn=collate_fn,
             drop_last=drop_last,
+            worker_init_fn=worker_init_fn,
+            generator=generator,
         )
         loaders.append(loader)
     return loaders
+
+
+def process_sharpen_single(config, img_path):
+    """img_path -> (channel_num, height, width)"""
+    img = Image.open(img_path).convert(config['img_mode'])
+    pad_shape = config['image_res'], config['image_res']
+    img = resize_pad_image(img, pad_shape)
+    assert img.ndim in (2, 3)
+    if img.ndim == 2:
+        img = np.expand_dims(img, axis=0)
+        assert img.shape == (1,) + pad_shape, str(img.shape)
+    else:
+        assert img.shape[2] <= 4
+        img = np.transpose(img, (2, 0, 1))
+        assert img.shape[1:] == pad_shape, str(img.shape)
+    return img
+
+
+def sharpen_unet_collate_fn(batch, config, mode):
+    noise_batch, label_batch = [], []
+    pad_shape = len(config['img_mode']), config['image_res'], config['image_res']
+    for noise_path, label_path in batch:
+        noise_img = process_sharpen_single(config, noise_path)
+        if mode != 'test':
+            label_img = process_sharpen_single(config, label_path)
+            assert noise_img.shape == label_img.shape == pad_shape, str(noise_img.shape) + ' ' + str(label_img.shape)
+        else:
+            label_img = label_path
+            assert noise_img.shape == pad_shape
+        noise_batch.append(noise_img)
+        label_batch.append(label_img)
+    return {
+        'inputs': torch.FloatTensor(noise_batch),
+        'labels': torch.FloatTensor(label_batch) if mode != 'test' else label_batch
+    }

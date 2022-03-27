@@ -6,58 +6,7 @@ from PIL import Image
 from utils import load_json
 from torchvision import transforms
 from torch.utils.data import Dataset
-
-
-def random_mask(image: Image.Image, pad_color=255, mask_ratio=0.0) -> np.ndarray:
-    """
-    随机遮蔽，先等比例选一个遮蔽方向
-    """
-    image = np.array(image)
-    height, width = image.shape[:2]
-    if mask_ratio <= 0.0:
-        return image
-    rnd = random.random()
-    if rnd < 0.25:
-        # 上 -> 下覆盖
-        mask_height = int(height * mask_ratio)
-        image[:mask_height, :] = pad_color
-    elif rnd < 0.5:
-        # 下 -> 上覆盖
-        mask_height = height - int(height * mask_ratio)
-        image[mask_height:, :] = pad_color
-    elif rnd < 0.75:
-        # 左 -> 右覆盖
-        mask_width = int(width * mask_ratio)
-        image[:, :mask_width] = pad_color
-    else:
-        # 右 -> 左覆盖
-        mask_width = width - int(width * mask_ratio)
-        image[:, mask_width:] = pad_color
-    return image
-
-
-def resize_pad_image(image: Image.Image, shape: tuple, pad_color=255, mask_ratio=0.0) -> np.ndarray:
-    # resize
-    width, height = image.size
-    assert len(shape) == 2
-    r_width, r_height = shape
-    w_ratio, h_ratio = r_width / width, r_height / height
-    if w_ratio >= h_ratio:
-        # resize by height
-        image = image.resize(size=(int(width * h_ratio), r_height))
-    else:
-        # resize by width
-        image = image.resize(size=(r_width, int(height * w_ratio)))
-    width, height = image.size
-    pad_h, pad_w = (r_height - height) // 2, (r_width - width) // 2
-    if image.mode == 'L':
-        pad_image = np.full((r_height, r_width), pad_color, dtype=np.uint8)
-        pad_image[pad_h:pad_h + height, pad_w:pad_w + width] = random_mask(image, pad_color, mask_ratio)
-    else:
-        # padding to shape, dtype required
-        pad_image = np.full((r_height, r_width, 3), pad_color, dtype=np.uint8)
-        pad_image[pad_h:pad_h+height, pad_w:pad_w+width, :] = random_mask(image, pad_color, mask_ratio)
-    return pad_image
+from dataset.data_utils import resize_pad_image
 
 
 def process_complete(book: dict, config, pad_color=255):
@@ -186,6 +135,16 @@ class OracleCompleteSingleDataset(Dataset):
         file_list = config['train_file'] if mode == 'train' else config['test_file']
         for file in file_list:
             books = load_json(os.path.join(config['data_prefix'], file))
+            if config['specific_test']:
+                assert isinstance(books[0], list)
+                for book, cid in books:
+                    if self.mode != 'char':
+                        self.data.append((book, cid))
+                    else:
+                        self.data.append(({'book_name': book['book_name'],
+                                           'row_order': book['row_order'],
+                                           'characters': [book['characters'][cid]]}, 0))
+                continue
             # 提前检查是否存在空缺字符
             if self.mode != 'complete':
                 for book in books:
@@ -211,7 +170,7 @@ class OracleCompleteSingleDataset(Dataset):
                 for book in books:
                     for cid, (ch, img) in enumerate(book['characters']):
                         if ch == '■':
-                            self.data.append({'characters': [(ch, img)]})
+                            self.data.append((book, cid))
             else:
                 raise ValueError('config dataset_mode')
         self.config = config
@@ -305,8 +264,9 @@ class OracleCompleteSingleDataset(Dataset):
         return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def __getitem__(self, index):
-        identity = self.data[index]['book_name'] + '-' + str(self.data[index]['row_order'])
-        if self.mode in ['normal', 'char']:
+        if self.mode in ['normal', 'char'] and not self.config['specific_test']:
+            book = self.data[index]
+            identity = book['book_name'] + '-' + str(book['row_order'])
             images, tokens = process_single_complete(self.data[index], self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
@@ -320,6 +280,7 @@ class OracleCompleteSingleDataset(Dataset):
                 return images, input_ids, identity
         else:
             book, mid = self.data[index]
+            identity = book['book_name'] + '-' + str(book['row_order'])
             images, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:

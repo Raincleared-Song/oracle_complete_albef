@@ -1,0 +1,20 @@
+data_path: {
+    train: ['train/noise', 'train/label'],
+    valid: ['valid/noise', 'valid/label'],
+    test:  ['test/noise', 'test/output'],
+}
+
+data_prefix: 'handa_sharpen'
+output_path: 'output/handa_book_sharpen_unet_base'
+
+image_res: 256
+batch_size: 4
+img_mode: 'L'
+model: 'unet'
+
+in_channels: 1
+out_channels: 1
+bilinear_sample: true
+
+optimizer: {opt: adamW, lr: 1e-3, weight_decay: 1e-8, momentum: 0.9}
+schedular: {sched: cosine, lr: 1e-3, epochs: 60, min_lr: 1e-3, decay_rate: 1, warmup_lr: 1e-3, warmup_epochs: 20, cooldown_epochs: 0}

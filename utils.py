@@ -100,12 +100,12 @@ class MetricLogger(object):
         self.delimiter = delimiter
         self.log_file = open(f_path, f_mode, encoding='utf-8')
 
-    def update(self, **kwargs):
+    def update(self, n=1, **kwargs):
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
                 v = v.item()
             assert isinstance(v, (float, int))
-            self.meters[k].update(v)
+            self.meters[k].update(v, n=n)
 
     def __getattr__(self, attr):
         if attr in self.meters:
