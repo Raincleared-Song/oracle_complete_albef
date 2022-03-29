@@ -325,17 +325,18 @@ def test(args, config, model, data_loader, tokenizer=None):
 
     # get all models
     if os.path.isdir(args.checkpoint):
-        model_list = sorted([m for m in os.listdir(args.checkpoint) if m.endswith('.pth')])
+        model_list = sorted([os.path.join(args.checkpoint, m)
+                             for m in os.listdir(args.checkpoint) if m.endswith('.pth')])
     else:
         model_list = [args.checkpoint]
 
     for cp_path in model_list:
 
-        pos = cp_path.find('_')
+        cp_base_path = os.path.basename(cp_path)
+        pos = cp_base_path.find('_')
         assert pos >= 0
-        epoch = int(cp_path[(pos + 1):(pos + 3)])
+        epoch = int(cp_base_path[(pos + 1):(pos + 3)])
 
-        cp_path = os.path.join(args.checkpoint, cp_path)
         # test every checkpoint
         checkpoint = torch.load(cp_path, map_location='cpu')
         state_dict = checkpoint['model']

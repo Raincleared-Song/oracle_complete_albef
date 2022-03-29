@@ -7,7 +7,7 @@ from tqdm import tqdm
 from utils import load_json, save_json
 from peewee import IntegerField, TextField, AutoField, Model, SqliteDatabase, CharField
 
-db = SqliteDatabase('handa_oracle.db')
+db = SqliteDatabase('chant_oracle.db')
 
 
 class BaseModel(Model):
@@ -15,35 +15,35 @@ class BaseModel(Model):
         database = db
 
 
-class BoneRow(BaseModel):
+class OracleBoneItems(BaseModel):
     """
     甲片条目表，每条数据代表甲片中的一个条目，(著录号-条号) 唯一对应一条数据
     """
     # 自增 id 域，主键
     id = AutoField()
-    # 著录号（甲片的唯一标识），最大长度 511 字符
-    book_name = CharField(null=False, max_length=511, column_name='book_name')
-    # 条号（正整数，甲片下某个甲骨文句子的序号）
-    row_order = IntegerField(null=False, column_name='row_order')
-    # 释文，甲骨文句子（繁体汉字），带 font 标签
-    modern_text = TextField(null=False, column_name='modern_text')
-    # 汉达文库类别，最大长度 7
-    category = CharField(null=False, max_length=7, column_name='category')
-    # 源数据在汉达文库中的 url 后缀，最大长度 511 字符
-    url = CharField(null=False, max_length=511, column_name='url')
+    # 著录号（甲片的唯一标识），最大长度 511 字符, 原 book_name
+    published_collection_number = CharField(null=False, max_length=511, column_name='published_collection_number')
+    # 汉达条号（正整数，甲片下某个甲骨文句子的序号），原 row_order
+    chant_notation_number = IntegerField(null=False, column_name='chant_notation_number')
+    # 汉达释文，甲骨文句子（繁体汉字），带 font 标签，原 modern_text
+    chant_transcription_text = TextField(null=False, column_name='chant_transcription_text')
+    # 汉达文库类别，最大长度 7，原 category
+    chant_calligraphy = CharField(null=False, max_length=7, column_name='chant_calligraphy')
+    # 源数据在汉达文库中的 url 后缀，最大长度 511 字符，原 url
+    chant_url = CharField(null=False, max_length=511, column_name='chant_url')
     # 包含单字的列表，以 '\t' 分隔的字符串，每个元素都是字形表 CharShape.id
     characters = TextField(null=False, column_name='characters')
-    # 甲片图的路径，最大长度 511 字符
-    l_bone_img = CharField(null=False, max_length=511, column_name='l_bone_img')
-    # 汉字排布图的路径，最大长度 511 字符
-    r_bone_img = CharField(null=False, max_length=511, column_name='r_bone_img')
+    # 甲片图的路径，最大长度 511 字符，原 l_bone_img
+    chant_processed_rubbing = CharField(null=False, max_length=511, column_name='chant_processed_rubbing')
+    # 汉字排布图的路径，最大长度 511 字符，原 r_bone_img
+    chant_mapped_character_image = CharField(null=False, max_length=511, column_name='chant_mapped_character_image')
     # 其他信息
     meta = TextField(null=False, default='{}', column_name='meta')
 
     class Meta:
         # 著录号-条号 联合唯一索引
         indexes = (
-            (('book_name', 'row_order'), True),
+            (('published_collection_number', 'chant_notation_number'), True),
         )
 
 
@@ -53,23 +53,25 @@ class Character(BaseModel):
     """
     # 自增 id 域，主键
     id = AutoField()
-    # 摹本中的编号，索引字段，为 -1 表示只在汉达而不在摹本中的字
-    char_index = IntegerField(null=False, index=True, column_name='char_index')
-    # 对应的汉字，utf-8 编码
-    char_byte = CharField(null=False, max_length=7, column_name='char_byte')
-    # 字体标签 name
-    font = CharField(null=False, max_length=7, column_name='font')
+    # 摹本中的编号，索引字段，为 -1 表示只在汉达而不在摹本中的字，原 char_index
+    wzb_character_number = IntegerField(null=False, index=True, column_name='wzb_character_number')
+    # 对应的现代汉字，utf-8 编码，原 char_byte
+    modern_character = CharField(null=False, max_length=7, column_name='modern_character')
+    # 汉达字体标签 name，原 font
+    chant_font_label = CharField(null=False, max_length=7, column_name='chant_font_label')
+    # 部首编号，未指定时为 -1
+    wzb_radical = IntegerField(null=False, default=-1, column_name='wzb_radical')
     # 其他信息
     meta = TextField(null=False, default='{}', column_name='meta')
 
     class Meta:
         # 编码-字体 联合唯一索引
         indexes = (
-            (('char_byte', 'font'), False),
+            (('modern_character', 'chant_font_label'), False),
         )
 
 
-class CharShape(BaseModel):
+class CharFace(BaseModel):
     """
     字形表，对应汉达文库/李老师摹本中的每一个单字字形
     """
@@ -78,31 +80,31 @@ class CharShape(BaseModel):
     # 根据 (著录号 - 无字体汉字) 进行匹配
     # 0-只在汉达中，不在摹本中；1-只在摹本中，不在汉达中；2-同时存在，数据可以对上，一一对应；3-同时存在，数据可对上，多于1条
     match_case = IntegerField(null=False, index=True, column_name='match_case')
-    # 属于哪一个单字 Character.id，索引字段
-    char_belong = IntegerField(null=False, index=True, column_name='char_belong')
-    # 在汉达文库甲片图中的坐标信息，可能为空（match_case == 1）
-    coords = CharField(null=False, max_length=63, column_name='coords')
-    # 汉达文库中带背景的噪声图片路径，最大长度 511 字符，可能为空（match_case == 1）
-    noise_image = CharField(null=False, max_length=511, column_name='noise_image')
-    # 摹写字形图片路径，最大长度 511 字符，可能为空（match_case == 0）
-    shape_image = CharField(null=False, max_length=511, column_name='shape_image')
-    # 所属的著录号，最大长度 511 字符，match_case == 0/2-取汉达著录号表示，1-取摹本著录号表示
-    book_name = CharField(null=False, max_length=511, column_name='book_name')
-    # 李老师摹本类别码，最大长度 7，可能为空（match_case == 0）
-    category = CharField(null=False, max_length=7, column_name='category')
-    # 页码号，可能为 -1（match_case == 0）
-    page_code = IntegerField(null=False, column_name='page_code')
+    # 属于哪一个单字 Character.id，索引字段，原 char_belong
+    liding_character = IntegerField(null=False, index=True, column_name='liding_character')
+    # 在汉达文库甲片图中的坐标信息，可能为空（match_case == 1），原 coords
+    chant_coordinates = CharField(null=False, max_length=63, column_name='chant_coordinates')
+    # 原形，即汉达文库中带背景的噪声图片路径，最大长度 511 字符，可能为空（match_case == 1），原 noise_image
+    chant_authentic_face = CharField(null=False, max_length=511, column_name='chant_authentic_face')
+    # 摹写字形图片路径，最大长度 511 字符，可能为空（match_case == 0），原 shape_image
+    wzb_handcopy_face = CharField(null=False, max_length=511, column_name='wzb_handcopy_face')
+    # 所属的著录号，最大长度 511 字符，match_case == 0/2-取汉达著录号表示，1-取摹本著录号表示，原 book_name
+    published_collection_number = CharField(null=False, max_length=511, column_name='published_collection_number')
+    # 李老师摹本类别码，最大长度 7，可能为空（match_case == 0），missing 表示找不到有效 ocr 编码，原 category
+    wzb_calligraphy = CharField(null=False, max_length=7, column_name='wzb_calligraphy')
+    # 页码号，可能为 -1（match_case == 0），原 page_number
+    wzb_page_number = IntegerField(null=False, column_name='wzb_page_number')
     # 第几行，可能为 -1（match_case == 0）
-    row_number = IntegerField(null=False, column_name='row_number')
+    wzb_row_number = IntegerField(null=False, column_name='wzb_row_number')
     # 第几列，可能为 -1（match_case == 0）
-    col_number = IntegerField(null=False, column_name='col_number')
+    wzb_col_number = IntegerField(null=False, column_name='wzb_col_number')
     # 其他信息
     meta = TextField(null=False, default='{}', column_name='meta')
 
 
 def init_db():
     db.connection()
-    db.create_tables([BoneRow, Character, CharShape])
+    db.create_tables([OracleBoneItems, Character, CharFace])
 
 
 def gen_book_char_stat():
@@ -176,17 +178,35 @@ def dump_data():
     将现有数据导入数据库
     """
     global db
-    err_log = open('output/err_db_323.txt', 'w', encoding='utf-8')
+    err_log = open('output/err_db_323+324.txt', 'w', encoding='utf-8')
     index_to_chars = {int(key): val for key, val in load_json('handa/index_to_chars.json').items()}
+    age_list = ['A1', 'A2', 'AS', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'AB', 'A9', 'A10', 'A11', 'A12', 'A13',
+                'B1', 'B2', 'B3', 'BL', 'B4', 'B5', 'B6', 'B7', 'C1', 'C2', 'C3', 'C4', 'C5', '一']
+    book_name_map = {
+        '合': 'H', '合補': 'B', '東大': 'D', '屯': 'T', '英': 'Y', '日天': 'L', '花': 'HD', '懷': 'W',
+    }
 
-    # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_37/ocr_char/'
-    # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_392/ocr_char'
-    # char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_3223/ocr_char'  # 5007
-    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_323/ocr_char'  # 6737
-    folder_list = sorted(os.listdir(char_base), key=lambda x: int(x))
+    def zero_padding(src: str, pad_len=5):
+        src = src.lstrip('0 ')
+        zid = 0
+        if src.isdigit():
+            zid = len(src)
+        else:
+            for zid in range(len(src)):
+                if not src[zid].isdigit():
+                    break
+        if zid >= pad_len:
+            return src
+        else:
+            return '0' * (pad_len - zid) + src
+
+    # folder_idx = 323  # 7662
+    folder_idx = 324  # 7706
+    char_base = f'/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_{folder_idx}/ocr_char'
+    folder_list = sorted([(folder, folder_idx) for folder in os.listdir(char_base)])
     bone_to_shapes = {}
     converter = opencc.OpenCC('t2s.json')
-    for folder in tqdm(folder_list, desc='ocr'):
+    for folder, ocr_idx in tqdm(folder_list, desc='ocr'):
         if int(folder) not in index_to_chars:
             err_log.write(f'{folder}\t[folder index not in table]\n')
             continue
@@ -197,32 +217,59 @@ def dump_data():
             file = o_file[:-4]
             if file in ['甲骨文字編-李宗焜_0416_correct_8_3_0848_陶_(A7)包_',
                         '甲骨文字編-李宗焜_0608_correct_7_3_1449_岳_(A7)E_',
+                        '甲骨文字編-李宗焜_0608_7_3_1449_岳_(A7)E_',
                         '甲骨文字編-李宗焜_1209_correct_8_3_3415_酒__屯005.']:
-                err_log.write(f'{folder}\t[bad format]\t{file}\n')
+                err_log.write(f'{folder}\t{ocr_idx}\t[bad format]\t{file}\n')
                 continue
             if not file.endswith(')'):
                 file += ')'
             try:
-                _, page, _, row, col, ch_idx, _, book_age = file.split('_')
+                if ocr_idx == 323:
+                    _, page, _, row, col, ch_idx, _, book_age = file.split('_')
+                else:
+                    _, page, row, col, ch_idx, _, book_age = file.split('_')
             except Exception as err:
-                print(folder, file)
+                print(folder, ocr_idx, file)
                 raise err
-            pos, pos_r = book_age.find('('), book_age.find(')')
             if int(folder) != int(ch_idx):
-                err_log.write(f'{folder}\t[ch_code not match]\t{file}\n')
+                err_log.write(f'{folder}\t{ocr_idx}\t[ch_code not match]\t{file}\n')
                 continue
-            if book_age.find('(', pos + 1) != -1 or book_age.find(')', pos_r + 1) != -1:
-                err_log.write(f'{folder}\t[double brackets]\t{file}\n')
+            # 修改年代号的匹配规则
+            age_pos, book_name, age = -1, '', ''
+            for age_sample in age_list:
+                age_pos = book_age.find(f'({age_sample})')
+                if age_pos != -1:
+                    book_name, age = book_age[:age_pos], age_sample
+                    break
+            if age_pos != -1 and len(book_name) == 0:
+                err_log.write(f'{folder}\t{ocr_idx}\t[null book_name]\t{file}\n')
                 continue
-            book_name, age = book_age[:pos], book_age[(pos + 1):-1]
+            if age_pos == -1:
+                pos = book_age.find('(')
+                book_name, age = book_age[:pos], 'missing'
+                if len(book_name) == 0:
+                    err_log.write(f'{folder}\t{ocr_idx}\t[null book_name and age code not found]\t{file}\n')
+                    continue
+                else:
+                    err_log.write(f'{folder}\t{ocr_idx}\t[age code not found]\t{file}\n')
+            assert len(book_name) > 0
             cur_folder_info.append((int(page), int(row), int(col), int(ch_idx), book_name, age, o_file))
         if len(cur_folder_info) == 0:
-            err_log.write(f'{folder}\t[empty folder]\n')
+            err_log.write(f'{folder}\t{ocr_idx}\t[empty folder]\n')
             continue
         folder_chars = index_to_chars[int(folder)]
         for page, row, col, ch_idx, book_name, age, file in cur_folder_info:
             # 记录甲片和字形的对应关系，去除著录号前导 0
-            book_name = book_name.strip().lstrip('0 ')
+            if book_name[0].isdigit():
+                book_name = 'H' + zero_padding(book_name)
+            elif book_name[:1] in book_name_map:
+                book_name = book_name_map[book_name[:1]] + zero_padding(book_name[1:])
+                char = index_to_chars[ch_idx] if ch_idx in index_to_chars else 'null'
+                err_log.write(f'[special] {book_name} {ch_idx} {char}\n')
+            elif book_name[:2] in book_name_map:
+                book_name = book_name_map[book_name[:2]] + zero_padding(book_name[2:])
+                char = index_to_chars[ch_idx] if ch_idx in index_to_chars else 'null'
+                err_log.write(f'[special] {book_name} {ch_idx} {char}\n')
             for char in folder_chars:
                 char = converter.convert(char)
                 if (book_name, char) not in bone_to_shapes:
@@ -242,6 +289,7 @@ def dump_data():
     err_log_match = open('output/err_db_match.txt', 'w', encoding='utf-8')
 
     # cur_new_char_id = 0
+    all_books = []
 
     for part in handa_parts:
         meta = load_json(f'{handa_base}/{part}/oracle_meta_{part}.json')
@@ -261,9 +309,8 @@ def dump_data():
                 ch = re.sub(r'</?[^>]+>|[ ]', '', ch).strip()
                 ch = converter.convert(ch)
                 # 创建字形，新增对数量的检查，去除前导 0，数量不对就一个都不匹配
-                key = (book_name[1:].lstrip('0 '), ch) if part == 'H' else ''
-                if key == '' or key not in bone_to_shapes or \
-                        len(bone_to_shapes[key]) != book_char_to_count[(book_name, ch)]:
+                key = (book_name, ch)
+                if key not in bone_to_shapes or len(bone_to_shapes[key]) != book_char_to_count[(book_name, ch)]:
                     if key in bone_to_shapes:
                         err_log_match.write(f'not match: [{book_name}] [{ch}] '
                                             f'[{len(bone_to_shapes[key])}] [{book_char_to_count[(book_name, ch)]}]\n')
@@ -271,28 +318,30 @@ def dump_data():
                         err_log_match.write(f'not match: [{book_name}] [{ch}]\n')
                     # 首先创建单字
                     if (ch, font, -1) not in char_font_index_to_id:
-                        new_ch = Character.create(char_index=-1, char_byte=ch, font=font)
+                        new_ch = Character.create(wzb_character_number=-1,
+                                                  modern_character=ch, chant_font_label=font)
                         char_font_index_to_id[(ch, font, -1)] = new_ch.id
                         # char_font_index_to_id[(ch, font, -1)] = cur_new_char_id
                         # cur_new_char_id += 1
                     # 考虑不匹配的情况，match_case == 0
                     match_count['match_handa'] += 1
-                    new_shape = CharShape.create(
+                    new_shape = CharFace.create(
                         match_case=0,
-                        char_belong=char_font_index_to_id[(ch, font, -1)],
-                        coords=coords,
-                        noise_image=img,
-                        shape_image="",
-                        book_name=book_name,
-                        category="",
-                        page_code=-1,
-                        row_number=-1,
-                        col_number=-1,
+                        liding_character=char_font_index_to_id[(ch, font, -1)],
+                        chant_coordinates=coords,
+                        chant_authentic_face=img,
+                        wzb_handcopy_face="",
+                        published_collection_number=book_name,
+                        wzb_calligraphy="",
+                        wzb_page_number=-1,
+                        wzb_row_number=-1,
+                        wzb_col_number=-1,
                     )
                 else:
                     # 考虑匹配的情况，match_case == 2，按条目顺序匹配
                     candidate_list = bone_to_shapes[key]
                     if len(candidate_list) == 1:
+                        all_books.append(book_name)
                         match_count['all_match_1'] += 1
                         match_case = 2
                     else:
@@ -307,35 +356,37 @@ def dump_data():
                     page, row, col, ch_idx, age, shape_img, _ = candidate
                     # 首先创建单字
                     if (ch, font, ch_idx) not in char_font_index_to_id:
-                        new_ch = Character.create(char_index=ch_idx, char_byte=ch, font=font)
+                        new_ch = Character.create(wzb_character_number=ch_idx,
+                                                  modern_character=ch, chant_font_label=font)
                         char_font_index_to_id[(ch, font, ch_idx)] = new_ch.id
                         # char_font_index_to_id[(ch, font, ch_idx)] = cur_new_char_id
                         # cur_new_char_id += 1
-                    new_shape = CharShape.create(
+                    new_shape = CharFace.create(
                         match_case=match_case,
-                        char_belong=char_font_index_to_id[(ch, font, ch_idx)],
-                        coords=coords,
-                        noise_image=img,
-                        shape_image=shape_img,
-                        book_name=book_name,
-                        category=age,
-                        page_code=page,
-                        row_number=row,
-                        col_number=col,
+                        liding_character=char_font_index_to_id[(ch, font, ch_idx)],
+                        chant_coordinates=coords,
+                        chant_authentic_face=img,
+                        wzb_handcopy_face=shape_img,
+                        published_collection_number=book_name,
+                        wzb_calligraphy=age,
+                        wzb_page_number=page,
+                        wzb_row_number=row,
+                        wzb_col_number=col,
                     )
                 cur_book_shape_ids.append(str(new_shape.id))
             # 创建新甲片
-            BoneRow.create(
-                book_name=book_name,
-                row_order=row_order,
-                modern_text=modern_text,
-                category=category,
-                url=url,
+            OracleBoneItems.create(
+                published_collection_number=book_name,
+                chant_notation_number=row_order,
+                chant_transcription_text=modern_text,
+                chant_calligraphy=category,
+                chant_url=url,
                 characters='\t'.join(cur_book_shape_ids),
-                l_bone_img=l_bone_img,
-                r_bone_img=r_bone_img,
+                chant_processed_rubbing=l_bone_img,
+                chant_mapped_character_image=r_bone_img,
             )
     print(match_count)
+    save_json(all_books, 'output/all_books.json')
     # exit()
 
     # 处理剩下的字形, match_case == 1
@@ -349,28 +400,28 @@ def dump_data():
             match_count['match_shape'] += 1
             # 创建新字
             if (char, '', ch_idx) not in char_font_index_to_id:
-                new_ch = Character.create(char_index=ch_idx, char_byte=char, font='')
+                new_ch = Character.create(wzb_character_number=ch_idx, modern_character=char, chant_font_label='')
                 char_font_index_to_id[(char, '', ch_idx)] = new_ch.id
-            CharShape.create(
+            CharFace.create(
                 match_case=1,
-                char_belong=char_font_index_to_id[(char, '', ch_idx)],
-                coords="",
-                noise_image="",
-                shape_image=shape_img,
-                book_name=book_name,
-                category=age,
-                page_code=page,
-                row_number=row,
-                col_number=col,
+                liding_character=char_font_index_to_id[(char, '', ch_idx)],
+                chant_coordinates="",
+                chant_authentic_face="",
+                wzb_handcopy_face=shape_img,
+                published_collection_number=book_name,
+                wzb_calligraphy=age,
+                wzb_page_number=page,
+                wzb_row_number=row,
+                wzb_col_number=col,
             )
     # {'match_handa': 433321, 'match_shape': 21619, 'all_match_1': 6737, 'all_match_more': 869}
     print(match_count)
     err_log_match.close()
-    print(BoneRow.select().count())  # 125697
+    print(OracleBoneItems.select().count())  # 125697
     print(Character.select().count())  # 4718
-    print(CharShape.select().count())  # 462546
-    print('count2:', CharShape.select().where(CharShape.match_case == 2).count())  # 6737
-    print(CharShape.select().where(CharShape.match_case == 3).count())  # 869
+    print(CharFace.select().count())  # 462546
+    print('count2:', CharFace.select().where(CharFace.match_case == 2).count())  # 6737
+    print(CharFace.select().where(CharFace.match_case == 3).count())  # 869
     save_json([key + (val,) for key, val in char_font_index_to_id.items()], 'output/char_font_index_to_id.json')
 
 
@@ -446,16 +497,16 @@ def gen_sharpen_dataset():
     """
     random.seed(100)
     handa_base = '/var/lib/shared_volume/data/private/songchenyang/hanzi_filter/handa'
-    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_323/ocr_char'
-    train_path = ['handa_sharpen/train/noise', 'handa_sharpen/train/label']
-    valid_path = ['handa_sharpen/valid/noise', 'handa_sharpen/valid/label']
+    char_base = '/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_324/ocr_char'
+    train_path = ['handa_sharpen2/train/noise', 'handa_sharpen2/train/label']
+    valid_path = ['handa_sharpen2/valid/noise', 'handa_sharpen2/valid/label']
     os.makedirs(train_path[0], exist_ok=True)
     os.makedirs(train_path[1], exist_ok=True)
     os.makedirs(valid_path[0], exist_ok=True)
     os.makedirs(valid_path[1], exist_ok=True)
     init_db()
-    for shape in tqdm(CharShape.select().where(CharShape.match_case == 2)):
-        assert isinstance(shape, CharShape)
+    for shape in tqdm(CharFace.select().where(CharFace.match_case == 2)):
+        assert isinstance(shape, CharFace)
         ch = Character.select().where(Character.id == shape.char_belong)
         assert len(ch) == 1 and isinstance(ch[0], Character)
         ch = ch[0].char_byte
@@ -470,8 +521,8 @@ def gen_sharpen_dataset():
 
 if __name__ == '__main__':
     # gen_sharpen_dataset()
-    test_log_to_data('output/finetune_single_mlm_np_neo/log_case_test_52.txt')
-    exit()
+    # test_log_to_data('output/finetune_single_mlm_np_neo/log_case_test_52.txt')
+    # exit()
     # check_data()
     # exit()
     # gen_book_char_stat()

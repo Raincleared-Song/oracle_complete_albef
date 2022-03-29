@@ -244,8 +244,7 @@ def test(args, config, model, data_loader):
             if isinstance(value, torch.Tensor):
                 data_dict[key] = value.to(device, non_blocking=True)
 
-        result = model(data_dict, 'test')
-        output_img, output_path = result['output_img'], result['output_path']
+        output_img, output_path = model(data_dict, 'test')
         assert output_img.shape[0] == len(output_path)
         for iid in range(len(output_path)):
             # save images

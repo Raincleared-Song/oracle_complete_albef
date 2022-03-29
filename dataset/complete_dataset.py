@@ -133,9 +133,10 @@ class OracleCompleteSingleDataset(Dataset):
         self.mode = config['dataset_mode']
         self.data = []
         file_list = config['train_file'] if mode == 'train' else config['test_file']
+        self.specific_test = config['specific_test'] and mode != 'train'
         for file in file_list:
             books = load_json(os.path.join(config['data_prefix'], file))
-            if config['specific_test']:
+            if self.specific_test:
                 assert isinstance(books[0], list)
                 for book, cid in books:
                     if self.mode != 'char':
@@ -264,7 +265,7 @@ class OracleCompleteSingleDataset(Dataset):
         return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def __getitem__(self, index):
-        if self.mode in ['normal', 'char'] and not self.config['specific_test']:
+        if self.mode in ['normal', 'char'] and not self.specific_test:
             book = self.data[index]
             identity = book['book_name'] + '-' + str(book['row_order'])
             images, tokens = process_single_complete(self.data[index], self.config)
