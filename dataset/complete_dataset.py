@@ -9,9 +9,10 @@ from torch.utils.data import Dataset
 from dataset.data_utils import resize_pad_image
 
 
-def process_complete(book: dict, config, pad_color=255):
+def process_complete(book: dict, config):
     grid_len = config['grid_len']
     img_res = config['image_res']
+    pad_color = config['pad_color']
     assert img_res % grid_len == 0
     grid_res = img_res // grid_len
     chars = book['characters']
@@ -57,7 +58,8 @@ class OracleCompleteDataset(Dataset):
 
     def convert_tokens_to_ids(self, tokens):
         for token in tokens:
-            assert token in self.tokenizer.vocab
+            if token not in self.tokenizer.vocab:
+                print('---', token, '---')
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         input_ids = [self.tokenizer.cls_token_id] + input_ids + [self.tokenizer.sep_token_id]
         return input_ids
@@ -113,8 +115,8 @@ class OracleCompleteDataset(Dataset):
             return img, input_ids
 
 
-def process_single_complete(book: dict, config, pad_color=255):
-    img_res, img_mode = config['image_res'], config['img_mode']
+def process_single_complete(book: dict, config):
+    img_res, img_mode, pad_color = config['image_res'], config['img_mode'], config['pad_color']
     res_images, res_caption = [], []
     for cid, (ch, image) in enumerate(book['characters']):
         assert os.path.exists(os.path.join(config['data_prefix'], image))
@@ -160,11 +162,19 @@ class OracleCompleteSingleDataset(Dataset):
             elif self.mode == 'char':
                 for book in books:
                     for cid, (ch, img) in enumerate(book['characters']):
-                        self.data.append({'characters': [(ch, img)]})
+                        self.data.append({
+                            'book_name': book['book_name'],
+                            'row_order': book['row_order'],
+                            'characters': [(ch, img)]
+                        })
             elif self.mode == 'all_mask_char':
                 for book in books:
                     for cid, (ch, img) in enumerate(book['characters']):
-                        self.data.append(({'characters': [(ch, img)]}, 0))
+                        self.data.append(({
+                            'book_name': book['book_name'],
+                            'row_order': book['row_order'],
+                            'characters': [(ch, img)]
+                        }, 0))
                         if len(book['characters']) > 1:
                             self.data.append((book, cid))
             elif self.mode == 'complete':
@@ -199,7 +209,8 @@ class OracleCompleteSingleDataset(Dataset):
 
     def convert_tokens_to_ids(self, tokens):
         for token in tokens:
-            assert token in self.tokenizer.vocab
+            if token not in self.tokenizer.vocab:
+                print('---', token, '---')
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         input_ids = [self.tokenizer.cls_token_id] + input_ids + [self.tokenizer.sep_token_id]
         return input_ids

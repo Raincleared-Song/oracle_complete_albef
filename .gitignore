@@ -3,5 +3,6 @@
 handa/
 output/
 **/__pycache__/
+pretrain_models/
 
 handa_sharpen.zip

@@ -20,6 +20,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
 from models.model_single_mlm import SingleMlm
+from models.vit import interpolate_pos_embed
 from transformers import AutoTokenizer
 
 import utils
@@ -45,7 +46,9 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
 
     metric_logger = utils.MetricLogger(f_path=os.path.join(config['output_path'], "log_metric.txt"), delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
+    metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('correct_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
@@ -67,8 +70,8 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_chs) \
-            in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_img_ids,
+            mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
 
@@ -79,16 +82,20 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
         mask_ids = mask_ids.to(device, non_blocking=True)
+        mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
-        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
+        total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
             rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, mask_ids, mask_chs, 'train')
+            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+                  mask_ids, mask_img_ids, mask_chs, 'train')
 
-        loss_mlm.backward()
+        total_loss.backward()
         optimizer.step()
 
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
+        metric_logger.update(loss_rec=loss_rec.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
         update_map = {}
@@ -154,6 +161,9 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             optimizer.load_state_dict(checkpoint['optimizer'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             start_epoch = checkpoint['epoch'] + 1
+        elif 'visual_encoder.pos_embed' in state_dict:
+            pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'], model.visual_encoder)
+            state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
 
         msg = model.load_state_dict(state_dict, strict=False)
         cur_max_global_acc = checkpoint['global_accuracy']
@@ -242,7 +252,9 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
 
     metric_logger = utils.MetricLogger(
         f_path=os.path.join(config['output_path'], "log_test_metric.txt"), delimiter="  ")
+    metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('correct_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
@@ -262,8 +274,8 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_chs) \
-            in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_img_ids,
+            mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
         input_ids = input_ids.to(device, non_blocking=True)
@@ -272,12 +284,16 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
         mask_ids = mask_ids.to(device, non_blocking=True)
+        mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
-        loss_mlm, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
+        total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
         rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, mask_ids, mask_chs, 'test')
+            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+                  mask_ids, mask_img_ids, mask_chs, 'test')
 
+        metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
+        metric_logger.update(loss_rec=loss_rec.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
         update_map = {}
@@ -341,6 +357,10 @@ def test(args, config, model, data_loader, tokenizer=None):
         checkpoint = torch.load(cp_path, map_location='cpu')
         state_dict = checkpoint['model']
         inner_model = model.module if hasattr(model, 'module') else model
+        if 'visual_encoder.pos_embed' in state_dict:
+            pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'], model.visual_encoder)
+            state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
+
         msg = inner_model.load_state_dict(state_dict, strict=False)
         print('loading complete:', msg)
         print('load checkpoint from %s' % cp_path)

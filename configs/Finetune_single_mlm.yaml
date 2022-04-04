@@ -1,26 +1,32 @@
-train_file: ['handa/data_filter_sim_train.json']
-#test_file: ['handa/data_filter_sim_test.json']
-#test_file: ['handa/log_case_test_52_data.json']
-test_file: ['handa/data_filter_sim_train_com.json', 'handa/data_filter_sim_test_com.json']
+train_file: ['handa/data_filter_tra_train.json']
+#test_file: ['handa/data_filter_tra_test.json']
+test_file: ['handa/log_case_test_52_data.json']
+#test_file: ['handa/data_filter_tra_train_com.json', 'handa/data_filter_tra_test_com.json']
+#test_file: ['handa/cases_com.json']
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/finetune_single_mlm_cb_com'
+output_path: 'output/tra_finetune_single_mlm_p0_vit_rec'
 
 image_res: 128
-batch_size: 4
-img_mode: 'L'
-dataset_mode: 'complete'
+batch_size: 2
+img_mode: 'RGB'
+dataset_mode: 'normal'
 modality: 'cross'
 img_mask_ratio: 0.0
 topk: [1, 5, 10, 20]
-specific_test: false
+specific_test: true
 
-vision_width: 768
+visual_encoder: 'vit'
+encoder_layer: 12
+image_reconstruct: true
+decoder_layer: 8
+
 embed_dim: 256
 mlm_probability: -1
 alpha: 0.4
+pad_color: 0
 
 optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
 schedular: {sched: cosine, lr: 1e-5, epochs: 60, min_lr: 1e-5, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 20, cooldown_epochs: 0}

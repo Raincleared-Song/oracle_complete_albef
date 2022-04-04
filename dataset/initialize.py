@@ -76,17 +76,23 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
     return: image_matrix with padding, input_ids with cls+seq+padding, attn_mask (both), labels (both)
     """
     images, sentences, attn_masks, labels, pos_ids, type_ids, lengths, book_orders = [], [], [], [], [], [], [], []
-    mask_ids, mask_chs = [], []
+    mask_ids, mask_chs, mask_img_ids = [], [], []
     # longest value n1
     max_len = max(len(img) for img, _, _, _, _, _ in batch)
     for img, input_ids, label, book_order, mask_id, mask_ch in batch:
         assert len(img) + 2 == len(input_ids) == len(label)
-        if modality == 'image':
-            mask_id -= 1
         book_orders.append(book_order)
-        mask_ids.append(mask_id)
         mask_chs.append(mask_ch)
         n1, n2 = len(img), max_len - len(img)
+        if modality == 'image':
+            mask_ids.append(mask_id - 1)
+            mask_img_ids.append(mask_id - 1)
+        elif modality == 'text':
+            mask_ids.append(mask_id)
+            mask_img_ids.append(mask_id)
+        else:
+            mask_ids.append(mask_id)
+            mask_img_ids.append(1 + n1 + n2 + mask_id)
         # [batch_size, n1 + n2, res*res*chan]
         img = torch.cat((img, torch.full((n2, img.shape[1]), img_pad_color)), dim=0)
         images.append(img.unsqueeze(0))
@@ -128,13 +134,13 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
             pos_ids.append(word_pos[:-1] + pad_pos)
             type_ids.append([1] * (n1 + n2))
 
-    assert len(mask_ids) == len(mask_chs)
-    for mask_id, mask_ch in zip(mask_ids, mask_chs):
-        assert mask_id >= 0 and mask_ch >= 0
+    assert len(mask_ids) == len(mask_chs) == len(mask_img_ids)
+    for mask_id, mask_ch, mask_img_id in zip(mask_ids, mask_chs, mask_img_ids):
+        assert 0 <= mask_id <= mask_img_id and mask_ch >= 0
 
     return torch.cat(images, dim=0), input_ids, torch.FloatTensor(attn_masks), \
         torch.cat(labels, dim=0), torch.LongTensor(pos_ids), torch.LongTensor(type_ids), \
-        lengths, book_orders, torch.LongTensor(mask_ids), mask_chs
+        lengths, book_orders, torch.LongTensor(mask_ids), torch.LongTensor(mask_img_ids), mask_chs
 
 
 def create_sampler(datasets, shuffles, num_tasks, global_rank):
@@ -177,7 +183,7 @@ def process_sharpen_single(config, img_path):
     """img_path -> (channel_num, height, width)"""
     img = Image.open(img_path).convert(config['img_mode'])
     pad_shape = config['image_res'], config['image_res']
-    img = resize_pad_image(img, pad_shape)
+    img = resize_pad_image(img, pad_shape, pad_color=config['pad_color'])
     assert img.ndim in (2, 3)
     if img.ndim == 2:
         img = np.expand_dims(img, axis=0)

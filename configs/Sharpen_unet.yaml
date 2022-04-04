@@ -1,18 +1,20 @@
 data_path: {
-    train: ['train/noise_proc', 'train/label_proc'],
-    valid: ['valid/noise_proc', 'valid/label_proc'],
+    train: ['train/noise', 'train/label_inv'],
+    valid: ['valid/noise', 'valid/label_inv'],
     #test:  ['test/noise', 'test/output'],
-    test: ['valid/noise', 'valid/output_scale'],
+    #test: ['valid/noise', 'valid/output'],
+    test: ['handa/noise_images', 'handa/output_unet_images'],
 }
 
-data_prefix: 'handa_sharpen'
-output_path: 'output/handa_book_sharpen_unet_scale_256'
+data_prefix: '../hanzi_filter'
+output_path: 'output/handa_book_sharpen_unet_base_inv_96'
 
-image_res: 256
+image_res: 96
 batch_size: 4
 img_mode: 'L'
 model: 'unet'
-scale: true
+scale: false
+pad_color: 0
 
 in_channels: 1
 out_channels: 1

@@ -2,6 +2,7 @@
 setting: batch 4, normal mode, cross modality (1-7 the same), ratio 0.0
 test result: epoch 52, acc 72.25
 test result (52): epoch 59, hit_1/5/10/20: 72.44 / 85.46 / 88.23 / 90.28
+(tra) test result (52): epoch 54, hit: 71.34 / 85.02 / 87.87 / 89.99
 
 2. finetune_single_mlm_np_50
 setting: batch 4, normal mode, ratio 0.50
@@ -32,13 +33,24 @@ test result (52): epoch 59, hit_1/5/10/20: 54.69 / 70.06 / 74.81 / 78.82
 setting: batch 4, normal mode, ratio 0.0, guwenbert-base
 test result: epoch 57, acc 60.3
 test result (52): epoch 57, hit_1/5/10/20: 60.8 / 80.14 / 84.31 / 87.2
+(tra) test_result (52):
 
 8. finetune_single_mlm_text
 setting: batch 4, normal mode, text modality, ratio 0.0
 test result: epoch 37, acc 53.3
 test result (52): epoch 37, hit_1/5/10/20: 52.78 / 77.21 / 83.78 / 87.64
+(tra) test result (52): epoch 58, hit: 53.66 / 77.68 / 83.92 / 87.61
 
 9. finetune_single_mlm_image
 setting: batch 4, normal mode, image modality, ratio 0.0
 test result: epoch 59, acc 62.04
 test result (52): epoch 59, hit_1/5/10/20: 62.71 / 77.63 / 81.8 / 85.0
+(tra) test result (52): epoch 53, hit_1/5/10/20: 62.32 / 76.86 / 81.44 / 85.31
+
+10. finetune_single_mlm_p0_np_clean
+setting: batch 4, normal mode, ratio 0.0, GAN clean
+(tra) test result (52): epoch 58, hit_1/5/10/20: 58.75 / 78.88 / 84.02 / 87.35
+
+11. finetune_single_mlm_p0_np_clean_unet
+setting: batch 4, normal mode, ratio 0.0, UNet clean
+(tra) test result (52): epoch 52, hit_1/5/10/20: 78.56 / 88.44 / 90.72 / 92.37

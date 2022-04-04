@@ -22,7 +22,7 @@
   "transformers_version": "4.8.1",
   "type_vocab_size": 2,
   "use_cache": true,
-  "vocab_size": 24079,
+  "vocab_size": 24101,
   "fusion_layer": 6,
   "encoder_width": 768
 }
