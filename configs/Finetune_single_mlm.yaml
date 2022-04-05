@@ -17,6 +17,7 @@ modality: 'cross'
 img_mask_ratio: 0.0
 topk: [1, 5, 10, 20]
 specific_test: true
+max_length: 16
 
 visual_encoder: 'vit'
 encoder_layer: 12

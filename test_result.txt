@@ -33,7 +33,7 @@ test result (52): epoch 59, hit_1/5/10/20: 54.69 / 70.06 / 74.81 / 78.82
 setting: batch 4, normal mode, ratio 0.0, guwenbert-base
 test result: epoch 57, acc 60.3
 test result (52): epoch 57, hit_1/5/10/20: 60.8 / 80.14 / 84.31 / 87.2
-(tra) test_result (52):
+(tra) test_result (52): 43.71 / 66.25 / 73.31 / 77.89
 
 8. finetune_single_mlm_text
 setting: batch 4, normal mode, text modality, ratio 0.0

@@ -185,6 +185,7 @@ class OracleCompleteSingleDataset(Dataset):
             else:
                 raise ValueError('config dataset_mode')
         self.config = config
+        self.model_mode = mode
         if config['img_mode'] == 'RGB':
             mean, std = {
                 128: ([0.5601, 0.5598, 0.5596], [0.4064, 0.4065, 0.4066]),
@@ -275,9 +276,24 @@ class OracleCompleteSingleDataset(Dataset):
 
         return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
+    def random_crop_characters(self, book, mid=-1):
+        limit, chars, new_mid = self.config['max_length'], book['characters'], mid
+        if limit < 0:
+            return book, mid
+        if len(chars) > limit:
+            if mid >= 0:
+                begin = max(0, mid - limit // 2)
+                new_mid = mid - begin
+                assert 0 <= new_mid <= mid
+            else:
+                begin = random.randint(0, len(chars) - limit)
+            book['characters'] = chars[begin:(begin+limit)]
+        return book, new_mid
+
     def __getitem__(self, index):
         if self.mode in ['normal', 'char'] and not self.specific_test:
             book = self.data[index]
+            book, _ = self.random_crop_characters(book)
             identity = book['book_name'] + '-' + str(book['row_order'])
             images, tokens = process_single_complete(self.data[index], self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
@@ -292,6 +308,7 @@ class OracleCompleteSingleDataset(Dataset):
                 return images, input_ids, identity
         else:
             book, mid = self.data[index]
+            book, mid = self.random_crop_characters(book, mid)
             identity = book['book_name'] + '-' + str(book['row_order'])
             images, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
