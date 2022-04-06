@@ -69,7 +69,7 @@ class Character(BaseModel):
     first_order_standard_character = CharField(null=False, default="", max_length=511,
                                                column_name='first_order_standard_character')
     # 二级字头，新增列，默认为空
-    second_order_standard_character = CharField(null=False, max_length=511,
+    second_order_standard_character = CharField(null=False, default="", max_length=511,
                                                 column_name='second_order_standard_character')
     # 《字表目录》第4列“页码”，原 page_number，默认为 -1
     wzb_page_number = IntegerField(null=False, default=-1, column_name='wzb_page_number')
@@ -118,7 +118,7 @@ class CharFace(BaseModel):
     # 原形，即汉达文库中带背景的噪声图片路径，最大长度 511 字符，可能为空（match_case == 1），原 noise_image
     chant_authentic_face = CharField(null=False, max_length=511, column_name='chant_authentic_face')
     # 汉达条号（正整数，甲片下某个甲骨文句子的序号），原 row_order
-    chant_notation_number = IntegerField(null=False, column_name='chant_notation_number')
+    chant_notation_number = IntegerField(null=False, default=-1, column_name='chant_notation_number')
     # 汉达中文字图片的编号，（著录号+条号+文字图片）
     chant_face_index = IntegerField(null=False, default=-1, column_name='chant_face_index')
     # 摹写字形图片路径，最大长度 511 字符，可能为空（match_case == 0），原 shape_image
@@ -221,7 +221,7 @@ def dump_data():
     将现有数据导入数据库
     """
     global db
-    err_log = open('output/err_db_323+324.txt', 'w', encoding='utf-8')
+    err_log = open('output/err_db_04011.txt', 'w', encoding='utf-8')
     index_to_chars = {int(key): val for key, val in load_json('handa/index_to_chars.json').items()}
     age_list = ['A1', 'A2', 'AS', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'AB', 'A9', 'A10', 'A11', 'A12', 'A13',
                 'B1', 'B2', 'B3', 'BL', 'B4', 'B5', 'B6', 'B7', 'C1', 'C2', 'C3', 'C4', 'C5', '一']
@@ -243,9 +243,13 @@ def dump_data():
         else:
             return '0' * (pad_len - zid) + src
 
-    # folder_idx = 323  # 7662
-    folder_idx = 324  # 7706
+    # folder_idx = '323'  # 7662
+    # folder_idx = '324'  # 7706
+    # folder_idx = '331'  # 7449
+    folder_idx = '04011'  # 7706
     char_base = f'/var/lib/shared_volume/home/linbiyuan/yolov5/ocr_res_png_{folder_idx}/ocr_char'
+    print('loading from char_base:', char_base)
+    folder_idx = int(folder_idx)
     folder_list = sorted([(folder, folder_idx) for folder in os.listdir(char_base)])
     bone_to_shapes = {}
     converter = opencc.OpenCC('t2s.json')
@@ -260,6 +264,7 @@ def dump_data():
             file = o_file[:-4]
             if file in ['甲骨文字編-李宗焜_0416_correct_8_3_0848_陶_(A7)包_',
                         '甲骨文字編-李宗焜_0608_correct_7_3_1449_岳_(A7)E_',
+                        '甲骨文字編-李宗焜_0447_7_1_1449_岳_(A7)E_',
                         '甲骨文字編-李宗焜_0608_7_3_1449_岳_(A7)E_',
                         '甲骨文字編-李宗焜_1209_correct_8_3_3415_酒__屯005.']:
                 err_log.write(f'{folder}\t{ocr_idx}\t[bad format]\t{file}\n')
@@ -345,6 +350,9 @@ def dump_data():
             cur_book_shape_ids = []
             for char in book['l_chars']:
                 ch, coords, img = char['char'], char['coords'], f'{part}/characters/{char["img"]}'
+                base_img = os.path.basename(img)
+                base_img_tokens = base_img[:-4].split('-')
+                assert len(base_img_tokens) == 3 and base_img_tokens[2].isdigit() and base_img[-4:] == '.png'
                 font = re.findall(r"<font face='([^']+)'>", ch)
                 font = list(set(font))
                 assert len(font) <= 1
@@ -362,7 +370,9 @@ def dump_data():
                     # 首先创建单字
                     if (ch, font, -1) not in char_font_index_to_id:
                         new_ch = Character.create(wzb_character_number=-1,
-                                                  modern_character=ch, chant_font_label=font)
+                                                  standard_liding_character=ch,
+                                                  chant_font_label=font,
+                                                  data_sources="chant.org")
                         char_font_index_to_id[(ch, font, -1)] = new_ch.id
                         # char_font_index_to_id[(ch, font, -1)] = cur_new_char_id
                         # cur_new_char_id += 1
@@ -370,15 +380,19 @@ def dump_data():
                     match_count['match_handa'] += 1
                     new_shape = CharFace.create(
                         match_case=0,
-                        liding_character=char_font_index_to_id[(ch, font, -1)],
+                        standard_character_id=char_font_index_to_id[(ch, font, -1)],
+                        standard_character=ch,
                         chant_coordinates=coords,
                         chant_authentic_face=img,
+                        chant_notation_number=row_order,
+                        chant_face_index=int(base_img[:-4].split('-')[2]),
                         wzb_handcopy_face="",
                         published_collection_number=book_name,
                         wzb_calligraphy="",
                         wzb_page_number=-1,
                         wzb_row_number=-1,
                         wzb_col_number=-1,
+                        data_sources="chant.org",
                     )
                 else:
                     # 考虑匹配的情况，match_case == 2，按条目顺序匹配
@@ -400,26 +414,32 @@ def dump_data():
                     # 首先创建单字
                     if (ch, font, ch_idx) not in char_font_index_to_id:
                         new_ch = Character.create(wzb_character_number=ch_idx,
-                                                  modern_character=ch, chant_font_label=font)
+                                                  standard_liding_character=ch,
+                                                  chant_font_label=font,
+                                                  data_sources="chant.org\t《甲骨文字编》2012，正文")
                         char_font_index_to_id[(ch, font, ch_idx)] = new_ch.id
                         # char_font_index_to_id[(ch, font, ch_idx)] = cur_new_char_id
                         # cur_new_char_id += 1
                     new_shape = CharFace.create(
                         match_case=match_case,
-                        liding_character=char_font_index_to_id[(ch, font, ch_idx)],
+                        standard_character_id=char_font_index_to_id[(ch, font, ch_idx)],
+                        standard_character=ch,
                         chant_coordinates=coords,
                         chant_authentic_face=img,
+                        chant_notation_number=row_order,
+                        chant_face_index=int(base_img[:-4].split('-')[2]),
                         wzb_handcopy_face=shape_img,
                         published_collection_number=book_name,
                         wzb_calligraphy=age,
                         wzb_page_number=page,
                         wzb_row_number=row,
                         wzb_col_number=col,
+                        data_sources="chant.org\t《甲骨文字编》2012，正文",
                     )
                 cur_book_shape_ids.append(str(new_shape.id))
             # 创建新甲片
             ChantOracleBoneItems.create(
-                published_collection_number=book_name,
+                chant_published_collection_number=book_name,
                 chant_notation_number=row_order,
                 chant_transcription_text=modern_text,
                 chant_calligraphy=category,
@@ -427,6 +447,7 @@ def dump_data():
                 characters='\t'.join(cur_book_shape_ids),
                 chant_processed_rubbing=l_bone_img,
                 chant_mapped_character_image=r_bone_img,
+                data_sources="chant.org"
             )
     print(match_count)
     save_json(all_books, 'output/all_books.json')
@@ -443,19 +464,26 @@ def dump_data():
             match_count['match_shape'] += 1
             # 创建新字
             if (char, '', ch_idx) not in char_font_index_to_id:
-                new_ch = Character.create(wzb_character_number=ch_idx, modern_character=char, chant_font_label='')
+                new_ch = Character.create(wzb_character_number=ch_idx,
+                                          standard_liding_character=char,
+                                          chant_font_label='',
+                                          data_sources="《甲骨文字编》2012，正文")
                 char_font_index_to_id[(char, '', ch_idx)] = new_ch.id
             CharFace.create(
                 match_case=1,
-                liding_character=char_font_index_to_id[(char, '', ch_idx)],
+                standard_character_id=char_font_index_to_id[(char, '', ch_idx)],
+                standard_character=char,
                 chant_coordinates="",
                 chant_authentic_face="",
+                chant_notation_number=-1,
+                chant_face_index=-1,
                 wzb_handcopy_face=shape_img,
                 published_collection_number=book_name,
                 wzb_calligraphy=age,
                 wzb_page_number=page,
                 wzb_row_number=row,
                 wzb_col_number=col,
+                data_sources="《甲骨文字编》2012，正文",
             )
     # {'match_handa': 433321, 'match_shape': 21619, 'all_match_1': 6737, 'all_match_more': 869}
     print(match_count)

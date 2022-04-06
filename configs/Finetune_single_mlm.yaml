@@ -1,6 +1,6 @@
-train_file: ['handa/data_filter_tra_train.json']
+train_file: ['handa/data_filter_tra_train_clean_unet.json']
 #test_file: ['handa/data_filter_tra_test.json']
-test_file: ['handa/log_case_test_52_data.json']
+test_file: ['handa/log_case_test_52_data_clean_unet.json']
 #test_file: ['handa/data_filter_tra_train_com.json', 'handa/data_filter_tra_test_com.json']
 #test_file: ['handa/cases_com.json']
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
