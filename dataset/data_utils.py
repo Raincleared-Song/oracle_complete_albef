@@ -9,7 +9,7 @@ from torchvision import transforms
 def random_transform(image: Image.Image, do_trans: bool, pad_color=0, mask_ratio=0.0, noise_ratio=0.25) -> np.ndarray:
     """
     Image, cv2 <-> array: (height, width, dim)
-    随机变换：[0, erase * 4] * [0, rot90, rot180, rot270] (在外面做) * [0, 25% noise]
+    随机变换：[0, erase * 4] * [0, rot90, rot180, rot270] (在外面做) * [0, 25% noise, 50% noise, 75% noise]
     """
     image = np.array(image)
     if not do_trans:
@@ -17,13 +17,11 @@ def random_transform(image: Image.Image, do_trans: bool, pad_color=0, mask_ratio
     # 覆盖变换
     image = random_mask(image, pad_color=pad_color, mask_ratio=mask_ratio)
     # 噪点变换
-    rnd = random.random()
-    if rnd < 0.5:
-        # 不做变换
-        pass
+    if mask_ratio > 0:
+        # 按比例加噪声
+        image = add_random_noise(image, ratio=noise_ratio, noise_color=(255 - pad_color))
     else:
-        # 随机加 25% 噪声
-        image = add_random_noise(image, ratio=noise_ratio, noise_color=(255-pad_color))
+        image = random_noise(image, noise_color=(255 - pad_color))
     return image
 
 
@@ -73,6 +71,22 @@ def random_rotate(image: np.ndarray) -> np.ndarray:
             # 逆时针旋转 90 度
             rot_image = cv2.flip(rot_image, 0)
     return rot_image
+
+
+def random_noise(image: np.ndarray, noise_color=255) -> np.ndarray:
+    noise_image = image.copy()
+    mask_probs = [0.4, 0.6, 0.8]
+    rnd = random.random()
+    if rnd < mask_probs[0]:
+        # 不做操作
+        pass
+    elif rnd < mask_probs[1]:
+        noise_image = add_random_noise(noise_image, 0.25, noise_color)
+    elif rnd < mask_probs[2]:
+        noise_image = add_random_noise(noise_image, 0.50, noise_color)
+    else:
+        noise_image = add_random_noise(noise_image, 0.75, noise_color)
+    return noise_image
 
 
 def add_random_noise(image: np.ndarray, ratio=0.25, noise_color=255) -> np.ndarray:
