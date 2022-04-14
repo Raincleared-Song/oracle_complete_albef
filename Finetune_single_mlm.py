@@ -70,12 +70,13 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_img_ids,
-            mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids,
+            mask_img_ids, mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
 
         images = images.to(device, non_blocking=True)
+        mask_ori_images = mask_ori_images.to(device, non_blocking=True)
         input_ids = input_ids.to(device, non_blocking=True)
         attn_masks = attn_masks.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
@@ -86,7 +87,7 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
 
         total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
             rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+            model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, 'train')
 
         total_loss.backward()
@@ -274,10 +275,11 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids, mask_img_ids,
-            mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids,
+            mask_img_ids, mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
+        mask_ori_images = mask_ori_images.to(device, non_blocking=True)
         input_ids = input_ids.to(device, non_blocking=True)
         attn_masks = attn_masks.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
@@ -288,7 +290,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
 
         total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
         rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
-            model(images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+            model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, 'test')
 
         metric_logger.update(total_loss=total_loss.item())

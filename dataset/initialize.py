@@ -76,10 +76,10 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
     return: image_matrix with padding, input_ids with cls+seq+padding, attn_mask (both), labels (both)
     """
     images, sentences, attn_masks, labels, pos_ids, type_ids, lengths, book_orders = [], [], [], [], [], [], [], []
-    mask_ids, mask_chs, mask_img_ids = [], [], []
+    mask_ids, mask_chs, mask_img_ids, mask_ori_images = [], [], [], []
     # longest value n1
-    max_len = max(len(img) for img, _, _, _, _, _ in batch)
-    for img, input_ids, label, book_order, mask_id, mask_ch in batch:
+    max_len = max(len(img) for img, _, _, _, _, _, _ in batch)
+    for img, input_ids, label, book_order, mask_id, mask_ch, mask_ori_img in batch:
         assert len(img) + 2 == len(input_ids) == len(label)
         book_orders.append(book_order)
         mask_chs.append(mask_ch)
@@ -114,6 +114,7 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
 
         lengths.append((n1, n2))
         # assert len(label) == len(attn_mask) == len(img) + len(input_ids)
+        mask_ori_images.append(mask_ori_img)
 
     input_ids = torch.cat(sentences, dim=0)
     temp_pos = create_position_ids_from_input_ids(input_ids, tokenizer.pad_token_id)
@@ -138,7 +139,7 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
     for mask_id, mask_ch, mask_img_id in zip(mask_ids, mask_chs, mask_img_ids):
         assert 0 <= mask_id <= mask_img_id and mask_ch >= 0
 
-    return torch.cat(images, dim=0), input_ids, torch.FloatTensor(attn_masks), \
+    return torch.cat(images, dim=0), torch.cat(mask_ori_images, dim=0), input_ids, torch.FloatTensor(attn_masks), \
         torch.cat(labels, dim=0), torch.LongTensor(pos_ids), torch.LongTensor(type_ids), \
         lengths, book_orders, torch.LongTensor(mask_ids), torch.LongTensor(mask_img_ids), mask_chs
 
@@ -183,7 +184,9 @@ def process_sharpen_single(config, img_path):
     """img_path -> (channel_num, height, width)"""
     img = Image.open(img_path).convert(config['img_mode'])
     pad_shape = config['image_res'], config['image_res']
-    img = resize_pad_image(img, pad_shape, pad_color=config['pad_color'])
+    img = resize_pad_image(img, pad_shape, do_trans=config['img_random_transform'],
+                           pad_color=config['pad_color'], mask_ratio=config['img_mask_ratio'],
+                           noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
     assert img.ndim in (2, 3)
     if img.ndim == 2:
         img = np.expand_dims(img, axis=0)

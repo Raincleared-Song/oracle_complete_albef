@@ -24,6 +24,22 @@ setting: batch 8, all_mask_char mode, ratio 0.0
 test result: epoch 10, acc 65.37
 test result (52): epoch 10, hit_1/5/10/20: 76.68 / 87.23 / 89.5 / 91.72
 
+5.1 tra_finetune_single_mlm_p0_combine
+setting: batch 4, all_mask_char mode, ratio 0.0
+(tra) test result (52): epoch 9, hit_1/5/10/20: 76.77 / 87.27 / 89.79 / 91.42
+
+5.2 tra_finetune_single_mlm_p0_combine_mk50
+setting: batch 4, all_mask_char mode, ratio 0.50
+(tra) test result (52): epoch 50, hit_1/5/10/20: 74.65 / 85.67 / 88.28 / 89.79
+
+5.3 tra_finetune_single_mlm_p0_combine_mk75
+setting: batch 4, all_mask_char mode, ratio 0.75
+(tra) test result (52): epoch 54, hit_1/5/10/20: 62.37 / 79.55 / 83.3 / 86.37
+
+5.4 tra_finetune_single_mlm_p0_combine_unet
+setting: batch 4, all_mask_char mode, ratio 0.0, UNet clean
+(tra) test result (52): epoch 54, hit_1/5/10/20: 81.0 / 89.37 / 91.44 / 92.84
+
 6. finetune_single_mlm_ch
 setting: batch 8, char mode, ratio 0.0
 test result: epoch 59, acc 55.3
@@ -54,3 +70,19 @@ setting: batch 4, normal mode, ratio 0.0, GAN clean
 11. finetune_single_mlm_p0_np_clean_unet
 setting: batch 4, normal mode, ratio 0.0, UNet clean
 (tra) test result (52): epoch 52, hit_1/5/10/20: 78.56 / 88.44 / 90.72 / 92.37
+
+12. tra_finetune_single_mlm_p0_vit_norec
+setting: batch 4, normal mode, ratio 0.0, Vit + No Rec
+(tra) test result (52): epoch 57, hit_1/5/10/20: 86.03 / 91.93 / 93.25 / 94.28
+
+13. tra_finetune_single_mlm_p0_vit_rec
+setting: batch 4, normal mode, ratio 0.0, Vit + Rec Loss
+(tra) test result (52): epoch 57, hit_1/5/10/20: 85.65 / 92.09 / 93.33 / 94.34
+
+14. tra_finetune_single_mlm_p0_vit_norec_unet
+setting: batch 4, normal mode, ratio 0.0, Vit + No Rec, UNet clean
+(tra) test result (52): epoch 57, hit_1/5/10/20: 83.17 / 90.4 / 92.29 / 93.43
+
+15. tra_finetune_single_mlm_p0_vit_rec_unet
+setting: batch 4, normal mode, ratio 0.0, Vit + Rec Loss, UNet clean
+(tra) test result (52): epoch 56, hit_1/5/10/20: 83.63 / 90.84 / 92.35 / 93.79

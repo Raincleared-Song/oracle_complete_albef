@@ -51,7 +51,7 @@ class SingleMlm(nn.Module):
         else:
             raise ValueError('Invalid Visual Encoder!')
 
-        if config['image_reconstruct']:
+        if config['image_reconstruct_factor'] > 0:
             self.reconstruct_decoder = nn.ModuleList([
                 Block(
                     dim=768, num_heads=12, mlp_ratio=4, qkv_bias=True,
@@ -63,6 +63,7 @@ class SingleMlm(nn.Module):
             self.reconstruct_loss = nn.MSELoss()
 
         self.config = config
+        # self.rec_idx = 0
 
     def forward_encoder(self, images):
         if self.config['visual_encoder'] == 'vit':
@@ -76,16 +77,20 @@ class SingleMlm(nn.Module):
         return image_embeds
 
     def forward_decoder(self, embeds, targets):
-        assert self.config['image_reconstruct']
+        assert self.config['image_reconstruct_factor'] > 0
         embeds = embeds.unsqueeze(1)
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
         embeds = embeds.squeeze(1)
         embeds = self.reconstruct_head(self.reconstruct_norm(embeds))
         loss = self.reconstruct_loss(embeds, targets)
+        # torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
+        # self.rec_idx += 1
+        # if self.rec_idx == 10:
+        #     exit()
         return embeds, loss
 
-    def forward(self, images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+    def forward(self, images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
                 mask_ids, mask_img_ids, mask_chs, mode):
         """
         input_ids: [batch_size, 1+n1+1+n2]
@@ -118,15 +123,10 @@ class SingleMlm(nn.Module):
         loss_mlm, loss_rec = mlm_output.loss, torch.tensor(0.0).to(mlm_output.loss)
 
         batch_sz = len(lengths)
-        if self.config['image_reconstruct']:
+        if self.config['image_reconstruct_factor'] > 0:
             last_hidden = mlm_output.hidden_states[-1]
             img_embeds = last_hidden[torch.arange(batch_sz), mask_img_ids, :]
-            if self.config['modality'] == 'image':
-                mask_true_ids = mask_ids
-            else:
-                mask_true_ids = mask_ids - 1
-            img_targets = images[torch.arange(batch_sz), mask_true_ids, :]
-            loss_rec = self.forward_decoder(img_embeds, img_targets)[1]
+            loss_rec = self.forward_decoder(img_embeds, mask_ori_images)[1]
 
         with torch.no_grad():
             prediction_scores = mlm_output.logits
@@ -170,6 +170,6 @@ class SingleMlm(nn.Module):
                 rank_instance_num[k] = batch_sz * k
                 hit_correct[k] = local_correct
 
-        total_loss = loss_mlm + loss_rec
+        total_loss = loss_mlm + loss_rec * self.config['image_reconstruct_factor']
         return total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_input_ids.tolist(), correct_chars, \
             wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids

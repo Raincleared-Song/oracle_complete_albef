@@ -261,6 +261,11 @@ def test_log_to_data(path: str, batch_size=4):
 
 
 def check_data():
+    print(len(load_json('../hanzi_filter/handa/data_filter_tra_train.json')))
+    print(len(load_json('../hanzi_filter/handa/data_filter_tra_test.json')))
+    print(len(load_json('../hanzi_filter/handa/data_filter_tra_train_com.json') +
+              load_json('../hanzi_filter/handa/data_filter_tra_test_com.json')))
+    exit()
     fout = open('../hanzi_filter/handa/book_order.txt', 'w', encoding='utf-8')
     data = load_json('../hanzi_filter/handa/data_filter_tra_train.json')
     for book in data:
@@ -270,6 +275,8 @@ def check_data():
 
 
 if __name__ == '__main__':
+    check_data()
+    exit()
     # test_log_to_data('output/finetune_single_mlm_np_neo/log_case_test_52.txt')
     # main()
     # get_complete_data()

@@ -7,6 +7,7 @@ python -m torch.distributed.launch --nproc_per_node=1 --use_env Pretrain.py --co
 python -m torch.distributed.launch --nproc_per_node=1 --use_env Pretrain.py --config ./configs/Pretrain_simple.yaml --mode test
 
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true
+srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true
 
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode train_valid
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode test --checkpoint output/handa_book_sharpen_unet_base_inv_96/checkpoint_09.pth

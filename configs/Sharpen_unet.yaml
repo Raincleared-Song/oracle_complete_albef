@@ -14,6 +14,9 @@ batch_size: 4
 img_mode: 'L'
 model: 'unet'
 scale: false
+img_random_transform: false
+img_mask_ratio: 0.0
+img_noise_ratio: 0.25
 pad_color: 0
 
 in_channels: 1

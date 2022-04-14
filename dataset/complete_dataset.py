@@ -27,7 +27,9 @@ def process_complete(book: dict, config):
         cur_img = Image.open(os.path.join(config['data_prefix'], image)).convert('RGB')
         res_caption.append(ch)
         h_idx, w_idx = cid // grid_len, cid % grid_len
-        pad_img = resize_pad_image(cur_img, (grid_res, grid_res), pad_color=pad_color)
+        pad_img = resize_pad_image(cur_img, (grid_res, grid_res), do_trans=config['img_random_transform'],
+                                   pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
+                                   noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
         res_img[h_idx*grid_res:(h_idx+1)*grid_res, w_idx*grid_res:(w_idx+1)*grid_res, :] = pad_img
     res_img = Image.fromarray(res_img, mode='RGB')
     return res_img, res_caption
@@ -122,10 +124,10 @@ def process_single_complete(book: dict, config):
         assert os.path.exists(os.path.join(config['data_prefix'], image))
         cur_img = Image.open(os.path.join(config['data_prefix'], image)).convert(img_mode)
         res_caption.append(ch)
-        pad_img = resize_pad_image(cur_img, (img_res, img_res),
-                                   pad_color=pad_color, mask_ratio=0.0)
+        pad_img = resize_pad_image(cur_img, (img_res, img_res), do_trans=False, pad_color=pad_color)
         pad_mask_img = resize_pad_image(cur_img, (img_res, img_res),
-                                        pad_color=pad_color, mask_ratio=config['img_mask_ratio'])
+                                        do_trans=True, pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
+                                        noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
         res_images.append((Image.fromarray(pad_img, mode=img_mode), Image.fromarray(pad_mask_img, mode=img_mode)))
     return res_images, res_caption
 
@@ -295,29 +297,35 @@ class OracleCompleteSingleDataset(Dataset):
             book = self.data[index]
             book, _ = self.random_crop_characters(book)
             identity = book['book_name'] + '-' + str(book['row_order'])
-            images, tokens = process_single_complete(self.data[index], self.config)
+            image_ls, tokens = process_single_complete(self.data[index], self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
                 input_ids, targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
-                assert len(images) == len(masked_indices)
+                assert len(image_ls) == len(masked_indices)
                 images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
-                                    for img, masked in zip(images, masked_indices)], dim=0)
-                return images, input_ids, targets, identity, mask_id, mask_ch
+                                    for img, masked in zip(image_ls, masked_indices)], dim=0)
+                assert np.sum(masked_indices) == 1  # temp
+                masked_id = np.nonzero(masked_indices)[0][0]
+                mask_ori_img = self.transform(image_ls[masked_id][0]).view(-1).unsqueeze(0)
+                return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
             else:
-                images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in images], dim=0)
+                images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
                 return images, input_ids, identity
         else:
             book, mid = self.data[index]
             book, mid = self.random_crop_characters(book, mid)
             identity = book['book_name'] + '-' + str(book['row_order'])
-            images, tokens = process_single_complete(book, self.config)
+            image_ls, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
                 input_ids, targets, masked_indices, mask_id, mask_ch = self.mask_by_id(input_ids, mid + 1)
-                assert len(images) == len(masked_indices)
+                assert len(image_ls) == len(masked_indices)
                 images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
-                                    for img, masked in zip(images, masked_indices)], dim=0)
-                return images, input_ids, targets, identity, mask_id, mask_ch
+                                    for img, masked in zip(image_ls, masked_indices)], dim=0)
+                assert np.sum(masked_indices) == 1  # temp
+                masked_id = np.nonzero(masked_indices)[0][0]
+                mask_ori_img = self.transform(image_ls[masked_id][0]).view(-1).unsqueeze(0)
+                return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
             else:
-                images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in images], dim=0)
+                images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
                 return images, input_ids, identity
