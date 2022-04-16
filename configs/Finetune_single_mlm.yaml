@@ -1,13 +1,13 @@
 train_file: ['handa/data_filter_tra_train.json']
 #test_file: ['handa/data_filter_tra_test.json']
-test_file: ['handa/log_case_test_52_data.json']
+test_file: ['handa/cases_com_tra_mid.json']
 #test_file: ['handa/data_filter_tra_train_com.json', 'handa/data_filter_tra_test_com.json']
 #test_file: ['handa/cases_com.json']
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/tra_finetune_single_mlm_p0_vit_mk75_nsp_rec01'
+output_path: 'output/tra_finetune_single_mlm_p0_vit_mk50_nsp_rec01'
 
 image_res: 128
 batch_size: 2

@@ -13,6 +13,8 @@ python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode train_valid
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode test --checkpoint output/handa_book_sharpen_unet_base_inv_96/checkpoint_09.pth
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode test --checkpoint output/handa_book_sharpen_unet_scale_inv_96/checkpoint_09.pth
 
-python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --checkpoint output/finetune_single_mlm_cb/checkpoint_10.pth --text_encoder '' --mode test
+python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --checkpoint output/tra_finetune_single_mlm_p0_vit_norec/checkpoint_57.pth --text_encoder '' --mode test
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --checkpoint output/finetune_single_mlm_np_mk50/checkpoint_48.pth --text_encoder '' --mode test
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --checkpoint output/finetune_single_mlm_np_mk75/checkpoint_59.pth --text_encoder '' --mode test
+
+grep -E "accuracy\": 8[3-9]\.[6-9]" log_test.txt

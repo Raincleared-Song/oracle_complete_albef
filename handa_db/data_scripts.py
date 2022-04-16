@@ -3,6 +3,7 @@ import re
 import cv2
 import math
 import shutil
+import random
 import numpy as np
 from tqdm import tqdm
 from cv2 import dnn_superres
@@ -212,28 +213,25 @@ def gen_real_complete_data():
         for (book_name, order), val in candidate_set.items():
             images, book = val[:-1], val[-1]
             assert isinstance(book, dict)
-            chars = []
+            chars, mask_ids = [], []
             to_test = 0
-            for char in book['r_chars']:
-                if char['img'] in images:
-                    chars.append(('■', f'handa/{part}/characters/{char["img"]}'))
+            for cid, char in enumerate(book['r_chars']):
+                if char['img'] in images and char['char'] != '■':
+                    # filter those characters without answer ■
                     to_test += 1
+                    mask_ids.append(cid)
                     fout.write('\t'.join([book_name, str(order), char['img'], char['char']]) + '\n')
-                else:
-                    chars.append((char['char'], f'handa/{part}/characters/{char["img"]}'))
-            try:
-                assert to_test == len(images)
-            except AssertionError as err:
-                from IPython import embed
-                embed()
-                raise err
-            all_data.append({
-                'book_name': book_name,
-                'row_order': order,
-                'characters': chars,
-            })
+                chars.append((char['char'], f'handa/{part}/characters/{char["img"]}'))
+            assert to_test == len(images)
+            for mid in mask_ids:
+                all_data.append(({
+                    'book_name': book_name,
+                    'row_order': order,
+                    'characters': chars,
+                }, mid))
     fout.close()
-    save_json(all_data, '../hanzi_filter/handa/cases_com_tra.json')
+    print(len(all_data))
+    save_json(all_data, '../hanzi_filter/handa/cases_com_tra_mid.json')
 
 
 def test_log_to_data(path: str, batch_size=4):
@@ -274,9 +272,39 @@ def check_data():
     fout.close()
 
 
+def find_test_vague():
+    random.seed(100)
+    sample_data = []
+    test_dir = '../hanzi_filter/handa/log_case_test_52_data.json'
+    test_data = load_json(test_dir)
+    threshold = 0.9
+    for book, _ in tqdm(test_data, 'test'):
+        characters = book['characters']
+        ratio_pass = []
+        for char, img in characters:
+            img = cv2.imread(os.path.join('../hanzi_filter', img))
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            ratio = np.sum(img < 100) / (img.shape[0] * img.shape[1])
+            ratio_pass.append(ratio > threshold)
+        if len(characters) < 3:
+            assert len(characters) > 0
+            if sum(ratio_pass) == len(characters):
+                sample_data.append((book, random.randint(0, len(characters) - 1)))
+        else:
+            candidates = []
+            for k in range(1, len(characters) - 1):
+                if ratio_pass[k-1] and ratio_pass[k] and ratio_pass[k+1]:
+                    candidates.append(k)
+            if len(candidates) > 0:
+                sample_data.append((book, random.choice(candidates)))
+    print(len(sample_data))
+    save_json(sample_data, '../hanzi_filter/handa/log_case_test_52_hard100.json')
+
+
 if __name__ == '__main__':
-    check_data()
-    exit()
+    # find_test_vague()
+    # check_data()
+    # exit()
     # test_log_to_data('output/finetune_single_mlm_np_neo/log_case_test_52.txt')
     # main()
     # get_complete_data()
