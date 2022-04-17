@@ -227,9 +227,9 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
                 f.write(json.dumps(log_stats) + "\n")
 
             if test_stats is not None:
-                log_stats = {**{f'test_{k}': v for k, v in test_stats.items()}, 'epoch': epoch}
+                log_stats = {**{f'valid_{k}': v for k, v in test_stats.items()}, 'epoch': epoch}
                 print(log_stats)
-                with open(os.path.join(config['output_path'], "log_test.txt"), "a") as f:
+                with open(os.path.join(config['output_path'], "log_valid.txt"), "a") as f:
                     f.write(json.dumps(log_stats) + "\n")
 
         if args.distributed:
@@ -243,16 +243,16 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
 @torch.no_grad()
 def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     assert args.mode in ['test', 'both']
-    # test
     model.eval()
+    mod = 'valid' if args.mode == 'both' else 'test'
 
     save_cases, f_case = tokenizer is not None, None
     if save_cases:
-        f_case = open(os.path.join(config['output_path'], 'logs_test',
-                                   f'log_case_test_{epoch}.txt'), 'w', encoding='utf-8')
+        f_case = open(os.path.join(config['output_path'], f'logs_{mod}',
+                                   f'log_case_{mod}_{epoch}.txt'), 'w', encoding='utf-8')
 
     metric_logger = utils.MetricLogger(
-        f_path=os.path.join(config['output_path'], "log_test_metric.txt"), delimiter="  ")
+        f_path=os.path.join(config['output_path'], f"log_{mod}_metric.txt"), delimiter="  ")
     metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
@@ -268,7 +268,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         metric_logger.add_meter(f'rank_instance_{k}', utils.SmoothedValue(
             window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:07}'))
 
-    header = 'Test Epoch: [{}]'.format(epoch)
+    header = 'Valid Epoch: [{}]'.format(epoch)
     print_freq = 10
     data_idx = 0
 
@@ -291,7 +291,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
         rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
             model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
-                  mask_ids, mask_img_ids, mask_chs, 'test')
+                  mask_ids, mask_img_ids, mask_chs, mod)
 
         metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
@@ -462,7 +462,9 @@ if __name__ == '__main__':
     Path(main_config['output_path']).mkdir(parents=True, exist_ok=True)
     if main_args.mode in ['train', 'both']:
         os.makedirs(os.path.join(main_config['output_path'], 'logs_train'), exist_ok=True)
-    if main_args.mode in ['test', 'both']:
+    if main_args.mode == 'both':
+        os.makedirs(os.path.join(main_config['output_path'], 'logs_valid'), exist_ok=True)
+    elif main_args.mode == 'test':
         os.makedirs(os.path.join(main_config['output_path'], 'logs_test'), exist_ok=True)
 
     yaml.dump(main_config, open(os.path.join(main_config['output_path'], 'config.yaml'), 'w'))

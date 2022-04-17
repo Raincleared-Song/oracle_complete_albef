@@ -96,7 +96,7 @@ class SingleMlm(nn.Module):
         input_ids: [batch_size, 1+n1+1+n2]
         images: [batch_size, n1+n2, res * res * chan]
         """
-        assert mode in ['train', 'test']
+        assert mode in ['train', 'valid', 'test']
 
         if self.modality == 'cross':
             # word embedding

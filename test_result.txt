@@ -85,6 +85,7 @@ setting: batch 2, normal mode, image modality, ratio 0.0, Vit + No Rec
 13. tra_finetune_single_mlm_p0_vit_rec
 setting: batch 2, normal mode, ratio 0.0, Vit + Rec Loss
 (tra) test result (52): epoch 57, hit_1/5/10/20: 85.65 / 92.09 / 93.33 / 94.34
+(tra) test result (com_mid): epoch 57, 52.46 / 75.61 / 81.4 / 88.07
 
 13.1 tra_finetune_single_mlm_p0_vit_rec10
 setting: batch 2, normal mode, ratio 0.0, Vit + Rec Loss * 10
@@ -93,6 +94,7 @@ setting: batch 2, normal mode, ratio 0.0, Vit + Rec Loss * 10
 13.2 tra_finetune_single_mlm_p0_vit_image_rec1
 setting: batch 2, normal mode, image modality, ratio 0.0, Vit + Rec Loss * 1.0
 (tra) test result (52): epoch 47, hit_1/5/10/20: 85.81 / 92.19 / 93.62 / 94.65
+(tra) test result (com_mid): epoch 47, 49.47 / 76.32 / 85.26 / 90.18
 
 13.3 tra_finetune_single_mlm_p0_vit_image_rec10
 setting: batch 2, normal mode, image modality, ratio 0.0, Vit + Rec Loss * 10
