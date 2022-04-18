@@ -86,7 +86,7 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
         total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
-            rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
+            rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
             model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, 'train')
 
@@ -116,11 +116,15 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
             wrong_chars = [f'{tokenizer.convert_ids_to_tokens(ch)} {tokenizer.convert_ids_to_tokens(wch)} {str(idx)}'
                            for ch, wch, idx in wrong_chars]
             f_case.write('Wrong: ' + str(wrong_chars) + '\n\n')
-            assert len(book_orders) == len(ori_inputs) == len(topk_ids)
-            for sent, book_order, topk_id in zip(ori_inputs, book_orders, topk_ids):
+            max_k = max(config['topk'])
+            assert len(book_orders) == len(ori_inputs) == len(topk_ids) == len(topk_scores)
+            for sent, book_order, topk_id, topk_score in zip(ori_inputs, book_orders, topk_ids, topk_scores):
                 f_case.write(str(data_idx) + '\t' +
                              str(tokenizer.convert_ids_to_tokens(sent)) + '\t' + book_order + '\n')
-                f_case.write('Topk: ' + str(tokenizer.convert_ids_to_tokens(topk_id)) + '\n')
+                topk_chs, topk_pairs = tokenizer.convert_ids_to_tokens(topk_id), []
+                for ch, score in zip(topk_chs, topk_score):
+                    topk_pairs.append((ch, round(score, 4)))
+                f_case.write(f'Top{max_k}: ' + str(topk_pairs) + '\n')
                 data_idx += 1
             f_case.write('------------------------------\n\n')
         f_case.flush()
@@ -289,7 +293,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
         mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
         total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
-        rank_correct_num, rank_instance_num, hit_correct, topk_ids = \
+            rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
             model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, mod)
 
@@ -312,11 +316,15 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
             wrong_chars = [f'{tokenizer.convert_ids_to_tokens(ch)} {tokenizer.convert_ids_to_tokens(wch)} {str(idx)}'
                            for ch, wch, idx in wrong_chars]
             f_case.write('Wrong: ' + str(wrong_chars) + '\n\n')
-            assert len(book_orders) == len(ori_inputs) == len(topk_ids)
-            for sent, book_order, topk_id in zip(ori_inputs, book_orders, topk_ids):
+            max_k = max(config['topk'])
+            assert len(book_orders) == len(ori_inputs) == len(topk_ids) == len(topk_scores)
+            for sent, book_order, topk_id, topk_score in zip(ori_inputs, book_orders, topk_ids, topk_scores):
                 f_case.write(str(data_idx) + '\t' +
                              str(tokenizer.convert_ids_to_tokens(sent)) + '\t' + book_order + '\n')
-                f_case.write('Topk: ' + str(tokenizer.convert_ids_to_tokens(topk_id)) + '\n')
+                topk_chs, topk_pairs = tokenizer.convert_ids_to_tokens(topk_id), []
+                for ch, score in zip(topk_chs, topk_score):
+                    topk_pairs.append((ch, round(score, 4)))
+                f_case.write(f'Top{max_k}: ' + str(topk_pairs) + '\n')
                 data_idx += 1
             f_case.write('------------------------------\n\n')
         f_case.flush()
@@ -428,8 +436,8 @@ def main(args, config):
 
     # Model #
     print("Creating model")
-    model = name_to_model[config['model']](config=config,
-        text_encoder=args.text_encoder, tokenizer=tokenizer, distributed=args.distributed)
+    model = name_to_model[config['model']](config=config, text_encoder=args.text_encoder,
+                                           tokenizer=tokenizer, distributed=args.distributed)
 
     model = model.to(torch.device(args.device))
 

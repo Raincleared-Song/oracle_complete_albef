@@ -153,9 +153,10 @@ class SingleMlm(nn.Module):
 
             # statistics for topk result
             batch_sz, sent_sz, vocab_sz = prediction_scores.shape
-            prediction_scores = prediction_scores[torch.arange(batch_sz), mask_ids, :]
+            prediction_scores = torch.softmax(prediction_scores[torch.arange(batch_sz), mask_ids, :], dim=1)
             # (bacth_sz, max_topk)
-            topk_ids = torch.topk(prediction_scores, k=max(self.topk), dim=1)[1].tolist()
+            topk_scores, topk_ids = torch.topk(prediction_scores, k=max(self.topk), dim=1)
+            topk_scores, topk_ids = topk_scores.tolist(), topk_ids.tolist()
             rank_correct_num, rank_instance_num, hit_correct = {}, {}, {}
             assert len(topk_ids) == len(mask_chs) == batch_sz
             for k in self.topk:
@@ -172,4 +173,4 @@ class SingleMlm(nn.Module):
 
         total_loss = loss_mlm + loss_rec * self.config['image_reconstruct_factor']
         return total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_input_ids.tolist(), correct_chars, \
-            wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids
+            wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores
