@@ -110,11 +110,11 @@ setting: batch 2, normal mode, ratio 0.0, Vit + Rec Loss, UNet clean
 
 16. tra_finetune_single_mlm_p0_vit_mk50_nsp_rec01
 setting: batch 2, normal mode, mask 0.50, random noise, ViT + Rec Loss * 1.0
-(tra) test result (52): epoch 59, hit_1/5/10/20: 83.65 / 91.1 / 92.7 / 93.89
+(tra) test result (52): epoch 99, hit_1/5/10/20: 84.64 / 91.65 / 93.1 / 93.95
 
 16.1 tra_finetune_single_mlm_p0_vit_mk75_nsp_rec01
 setting: batch 2, normal mode, mask 0.75, random noise, ViT + Rec Loss * 1.0
-(tra) test result (52): epoch 53, hit_1/5/10/20: 74.91 / 87.35 / 89.92 / 91.62
+(tra) test result (52): epoch 87, hit_1/5/10/20: 74.96 / 87.0 / 89.66 / 91.39
 
 17. tra_finetune_single_mlm_p0_vit_mk50_ns25_rec01
 setting: batch 2, normal mode, mask 0.50, noise 0.25, ViT + Rec Loss * 1.0
@@ -123,3 +123,8 @@ setting: batch 2, normal mode, mask 0.50, noise 0.25, ViT + Rec Loss * 1.0
 17.1 tra_finetune_single_mlm_p0_vit_mk75_ns25_rec01
 setting: batch 2, normal mode, mask 0.75, noise 0.25, ViT + Rec Loss * 1.0
 (tra) test result (52): epoch 59, hit_1/5/10/20: 72.95 / 86.43 / 89.21 / 91.15
+
+18. tra_finetune_single_mlm_p0_vit_text
+setting: batch 2, normal mode, ratio 0.0, text modality
+(tra) test result (52): epoch 39, hit_1/5/10/20: 52.89 / 76.88 / 83.73 / 87.18
+(tra) test result (com_mid): epoch 39, 49.47 / 76.32 / 85.26 / 90.18

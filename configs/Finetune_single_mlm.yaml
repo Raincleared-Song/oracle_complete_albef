@@ -28,10 +28,7 @@ visual_encoder: 'vit'
 encoder_layer: 12
 image_reconstruct_factor: 1.0
 decoder_layer: 8
-
-embed_dim: 256
 mlm_probability: -1
-alpha: 0.4
 
 optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
 schedular: {sched: cosine, lr: 1e-5, epochs: 60, min_lr: 1e-5, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 20, cooldown_epochs: 0}

@@ -125,8 +125,8 @@ def process_single_complete(book: dict, config):
         cur_img = Image.open(os.path.join(config['data_prefix'], image)).convert(img_mode)
         res_caption.append(ch)
         pad_img = resize_pad_image(cur_img, (img_res, img_res), do_trans=False, pad_color=pad_color)
-        pad_mask_img = resize_pad_image(cur_img, (img_res, img_res),
-                                        do_trans=True, pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
+        pad_mask_img = resize_pad_image(cur_img, (img_res, img_res), do_trans=config['img_random_transform'],
+                                        pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
                                         noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
         res_images.append((Image.fromarray(pad_img, mode=img_mode), Image.fromarray(pad_mask_img, mode=img_mode)))
     return res_images, res_caption

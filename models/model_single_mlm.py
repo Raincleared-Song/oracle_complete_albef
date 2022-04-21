@@ -140,16 +140,18 @@ class SingleMlm(nn.Module):
             correct_ids = [tuple(idx) for idx in torch.nonzero(predict_result).cpu().tolist()]
             correct_chars = []
             for idx in correct_ids:
-                correct_chars.append((labels[idx].item(), idx))
+                ori_idx = (idx[0], idx[1] + 1) if self.modality == 'image' else idx
+                correct_chars.append((labels[idx].item(), ori_idx))
 
             ori_input_ids = input_ids.cpu()
             instance_idx = [tuple(idx) for idx in torch.nonzero(labels + 100).cpu().tolist()]
             wrong_chars = []
             correct_set = set(correct_ids)
             for idx in instance_idx:
-                ori_input_ids[idx] = labels[idx].item()
+                ori_idx = (idx[0], idx[1] + 1) if self.modality == 'image' else idx
+                ori_input_ids[ori_idx] = labels[idx].item()
                 if idx not in correct_set:
-                    wrong_chars.append((labels[idx].item(), predict_result_ids[idx].item(), idx))
+                    wrong_chars.append((labels[idx].item(), predict_result_ids[idx].item(), ori_idx))
 
             # statistics for topk result
             batch_sz, sent_sz, vocab_sz = prediction_scores.shape
