@@ -66,7 +66,6 @@ class ImageReconstruct(nn.Module):
     def forward_decoder(self, embeds, targets):
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
-        embeds = embeds.squeeze(1)
         embeds = self.reconstruct_head(self.reconstruct_norm(embeds))
         loss = self.reconstruct_loss(embeds, targets)
         # torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
