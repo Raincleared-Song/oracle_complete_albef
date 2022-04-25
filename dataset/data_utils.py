@@ -17,7 +17,7 @@ def random_transform(image: Image.Image, do_trans: bool, pad_color=0, mask_ratio
     # 覆盖变换
     image = random_mask(image, pad_color=pad_color, mask_ratio=mask_ratio)
     # 噪点变换
-    if mask_ratio > 0:
+    if noise_ratio > 0:
         # 按比例加噪声
         image = add_random_noise(image, ratio=noise_ratio, noise_color=(255 - pad_color))
     else:

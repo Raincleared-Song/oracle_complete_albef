@@ -10,6 +10,8 @@ python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text
 srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true
 python Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode both --save_all=true
 srun -G 1 -c 4 --mem 16g python3 Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode both --save_all=true
+python Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all/checkpoint_29.pth
+python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk50_lr4/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk50_lr4/checkpoint_37.pth
 
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode train_valid
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode test --checkpoint output/handa_book_sharpen_unet_base_inv_96/checkpoint_09.pth

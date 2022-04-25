@@ -63,12 +63,16 @@ class ImageReconstruct(nn.Module):
             image_embeds = self.visual_encoder(images)
         return image_embeds
 
-    def forward_decoder(self, embeds, targets):
+    def forward_decoder(self, embeds, targets, images=None):
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
         embeds = self.reconstruct_head(self.reconstruct_norm(embeds))
         loss = self.reconstruct_loss(embeds, targets)
-        # torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
+        # if images is None:
+        #     torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
+        # else:
+        #     torch.save([embeds.cpu(), targets.cpu(), images.cpu()],
+        #                f'{self.config["output_path"]}/{self.rec_idx}.pth')
         # self.rec_idx += 1
         # if self.rec_idx == 10:
         #     exit()
@@ -82,6 +86,6 @@ class ImageReconstruct(nn.Module):
         assert mode in ['train', 'valid', 'test']
 
         input_embeds = self.forward_encoder(images)
-        loss_rec = self.forward_decoder(input_embeds, labels)[1]
+        loss_rec = self.forward_decoder(input_embeds, labels, images)[1]
 
-        return loss_rec
+        return loss_rec * self.config['image_reconstruct_factor']

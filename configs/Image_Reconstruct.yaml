@@ -4,15 +4,15 @@ test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'ImageReconstruct'
-output_path: 'output/tra_image_reconstruct_vit_all'
+output_path: 'output/tra_image_reconstruct_vit_all_mk25_ranoise_lr4'
 
 image_res: 128
 batch_size: 4
 img_mode: 'RGB'
 dataset_mode: 'all_mask'
 
-img_random_transform: false
-img_mask_ratio: 0.5
+img_random_transform: true
+img_mask_ratio: 0.25
 img_noise_ratio: -1
 img_do_rotate: false
 pad_color: 0
@@ -22,6 +22,7 @@ max_length: 16
 visual_encoder: 'vit'
 encoder_layer: 12
 decoder_layer: 8
+image_reconstruct_factor: 1.0
 
-optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
-schedular: {sched: cosine, lr: 1e-5, epochs: 30, min_lr: 1e-5, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 20, cooldown_epochs: 0}
+optimizer: {opt: adamW, lr: 1e-4, weight_decay: 0.02}
+schedular: {sched: cosine, lr: 1e-4, epochs: 60, min_lr: 1e-4, decay_rate: 1, warmup_lr: 1e-4, warmup_epochs: 20, cooldown_epochs: 0}
