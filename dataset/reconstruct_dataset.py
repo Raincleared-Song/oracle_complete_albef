@@ -25,6 +25,11 @@ def process_image_reconstruct(book: dict, mids: list, config):
     return res_images
 
 
+def is_valid_image(book, cid):
+    book_name, row_order = book['book_name'], book['row_order']
+    return os.path.basename(book['characters'][cid][1]).startswith(f'{book_name}-{row_order}')
+
+
 class ImageReconstructDataset(Dataset):
     def __init__(self, config, mode):
         self.mode, self.data, self.config = config['dataset_mode'], [], config
@@ -41,13 +46,19 @@ class ImageReconstructDataset(Dataset):
                 # 每个条目随机选 1 张图片
                 for book in books:
                     book = self.random_crop_characters(book)
-                    mid = random.randint(0, len(book['characters']) - 1)
+                    candidates = [cid for cid in range(len(book['characters'])) if is_valid_image(book, cid)]
+                    if len(candidates) == 0:
+                        continue
+                    mid = random.choice(candidates)
                     self.data.append((book, [mid]))
             elif self.mode == 'all_mask':
                 # 每个条目取所有图片
                 for book in books:
                     book = self.random_crop_characters(book)
-                    self.data.append((book, [i for i in range(len(book['characters']))]))
+                    candidates = [cid for cid in range(len(book['characters'])) if is_valid_image(book, cid)]
+                    if len(candidates) == 0:
+                        continue
+                    self.data.append((book, candidates))
             else:
                 raise ValueError('config dataset_mode')
         self.model_mode = mode
