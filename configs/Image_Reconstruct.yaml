@@ -4,7 +4,7 @@ test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'ImageReconstruct'
-output_path: 'output/tra_image_reconstruct_vit_all_mk25_ranoise_lr4'
+output_path: 'output/tra_image_reconstruct_vit_all_mk25_lr4'
 
 image_res: 128
 batch_size: 4
@@ -13,7 +13,7 @@ dataset_mode: 'all_mask'
 
 img_random_transform: true
 img_mask_ratio: 0.25
-img_noise_ratio: -1
+img_noise_ratio: 0.0
 img_do_rotate: false
 pad_color: 0
 specific_test: true
