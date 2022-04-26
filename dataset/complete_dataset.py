@@ -159,6 +159,8 @@ class OracleCompleteSingleDataset(Dataset):
                 self.data += books
             elif self.mode == 'all_mask':
                 for book in books:
+                    if config['modality'] == 'text' and len(book['characters']) == 1:
+                        continue
                     for cid in range(len(book['characters'])):
                         self.data.append((book, cid))
             elif self.mode == 'char':
@@ -280,8 +282,9 @@ class OracleCompleteSingleDataset(Dataset):
 
     def random_crop_characters(self, book, mid=-1):
         limit, chars, new_mid = self.config['max_length'], book['characters'], mid
+        new_book = book.copy()
         if limit < 0:
-            return book, mid
+            return new_book, mid
         if len(chars) > limit:
             if mid >= 0:
                 begin = max(0, mid - limit // 2)
@@ -289,8 +292,8 @@ class OracleCompleteSingleDataset(Dataset):
                 assert 0 <= new_mid <= mid
             else:
                 begin = random.randint(0, len(chars) - limit)
-            book['characters'] = chars[begin:(begin+limit)]
-        return book, new_mid
+            new_book['characters'] = chars[begin:(begin+limit)]
+        return new_book, new_mid
 
     def __getitem__(self, index):
         if self.mode in ['normal', 'char'] and not self.specific_test:
@@ -313,6 +316,7 @@ class OracleCompleteSingleDataset(Dataset):
                 return images, input_ids, identity
         else:
             book, mid = self.data[index]
+            assert mid < len(book['characters'])
             book, mid = self.random_crop_characters(book, mid)
             identity = book['book_name'] + '-' + str(book['row_order'])
             image_ls, tokens = process_single_complete(book, self.config)

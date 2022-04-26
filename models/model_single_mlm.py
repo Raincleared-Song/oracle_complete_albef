@@ -14,19 +14,23 @@ class SingleMlm(nn.Module):
 
         self.tokenizer = tokenizer
         roberta_config = RobertaConfig.from_json_file(config['bert_config'])
-        if text_encoder:
+        self.distributed = distributed
+        self.modality = config['modality'] if 'modality' in config else 'cross'
+        if self.modality == 'image':
+            pass
+        elif text_encoder:
             self.text_encoder = RobertaForMaskedLM.from_pretrained(text_encoder, config=roberta_config)
         else:
             self.text_encoder = RobertaForMaskedLM(config=roberta_config)
-        self.distributed = distributed
-        self.modality = config['modality'] if 'modality' in config else 'cross'
         if 'topk' in config:
             assert config['mlm_probability'] <= 0
             self.topk = config['topk']
 
         self.channel_num = len(config['img_mode'])
         input_number_classes = config['image_res'] * config['image_res'] * self.channel_num
-        if config['visual_encoder'] == 'mlp':
+        if self.modality == 'text':
+            pass
+        elif config['visual_encoder'] == 'mlp':
             self.visual_encoder = nn.Sequential(
                 nn.Linear(input_number_classes, 512),
                 nn.ReLU(),
