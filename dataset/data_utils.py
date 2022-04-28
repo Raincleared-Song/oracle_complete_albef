@@ -28,27 +28,41 @@ def random_transform(image: Image.Image, do_trans: bool, pad_color=0, mask_ratio
 def random_mask(image: np.ndarray, pad_color=0, mask_ratio=0.0) -> np.ndarray:
     mask_image = image.copy()
     height, width = mask_image.shape[:2]
-    rnd = random.random()
-    mask_probs = [0.5, 0.625, 0.75, 0.875]
+    rnd, rnd_mk = random.random(), random.random()
+    mask_probs = [0.2, 0.4, 0.6, 0.8]
+    mask_mk_prob = 0.2
+    assert mask_ratio in [0.0, 0.25, 0.5, 0.75]
     if rnd < mask_probs[0]:
         # 不做覆盖
         pass
     elif rnd < mask_probs[1]:
         # 上 -> 下覆盖
         mask_height = int(height * mask_ratio)
-        mask_image[:mask_height, :] = pad_color
+        if mask_ratio != 0.25 or rnd_mk < mask_mk_prob:
+            mask_image[:mask_height, :] = pad_color
+        else:
+            mask_image[mask_height:(mask_height*2), :] = pad_color
     elif rnd < mask_probs[2]:
         # 下 -> 上覆盖
-        mask_height = height - int(height * mask_ratio)
-        mask_image[mask_height:, :] = pad_color
+        mask_height = int(height * mask_ratio)
+        if mask_ratio != 0.25 or rnd_mk < mask_mk_prob:
+            mask_image[(height-mask_height):, :] = pad_color
+        else:
+            mask_image[(height-mask_height*2):(height-mask_height), :] = pad_color
     elif rnd < mask_probs[3]:
         # 左 -> 右覆盖
         mask_width = int(width * mask_ratio)
-        mask_image[:, :mask_width] = pad_color
+        if mask_ratio != 0.25 or rnd_mk < mask_mk_prob:
+            mask_image[:, :mask_width] = pad_color
+        else:
+            mask_image[:, mask_width:(mask_width*2)] = pad_color
     else:
         # 右 -> 左覆盖
-        mask_width = width - int(width * mask_ratio)
-        mask_image[:, mask_width:] = pad_color
+        mask_width = int(width * mask_ratio)
+        if mask_ratio != 0.25 or rnd_mk < mask_mk_prob:
+            mask_image[:, (width-mask_width):] = pad_color
+        else:
+            mask_image[:, (width-mask_width*2):(width-mask_width)] = pad_color
     return mask_image
 
 
