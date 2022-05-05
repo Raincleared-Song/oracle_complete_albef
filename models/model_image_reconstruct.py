@@ -8,7 +8,7 @@ class ImageReconstruct(nn.Module):
     """
     只做图像复原任务的单模态模型
     """
-    def __init__(self, config=None, init_deit=True, distributed=False):
+    def __init__(self, config=None, tokenizer=None, init_deit=True, distributed=False):
         super().__init__()
 
         self.distributed = distributed
@@ -50,7 +50,13 @@ class ImageReconstruct(nn.Module):
         self.reconstruct_loss = nn.MSELoss()
 
         self.config = config
+        self.tokenizer = tokenizer
         # self.rec_idx = 0
+
+        self.image_classification_factor = config['image_classification_factor']
+        if sum(self.image_classification_factor) > 0:
+            self.classification_head = nn.Linear(768, self.tokenizer.vocab_size)
+            self.classification_loss = nn.CrossEntropyLoss()
 
     def forward_encoder(self, images):
         if self.config['visual_encoder'] == 'vit':
@@ -66,8 +72,8 @@ class ImageReconstruct(nn.Module):
     def forward_decoder(self, embeds, targets, images=None):
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
-        embeds = self.reconstruct_head(self.reconstruct_norm(embeds))
-        loss = self.reconstruct_loss(embeds, targets)
+        img_pre = self.reconstruct_head(self.reconstruct_norm(embeds))
+        loss = self.reconstruct_loss(img_pre, targets)
         # if images is None:
         #     torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
         # else:
@@ -76,9 +82,24 @@ class ImageReconstruct(nn.Module):
         # self.rec_idx += 1
         # if self.rec_idx == 10:
         #     exit()
-        return embeds, loss
+        return img_pre, embeds, loss
 
-    def forward(self, images, labels, mode):
+    def forward_classification(self, embeds, texts):
+        batch_sz, seq_len = texts.shape
+        label_mask = texts != -100
+        instance_num = torch.sum(label_mask)
+        if sum(self.image_classification_factor) > 0:
+            txt_embeds = self.classification_head(embeds)
+            loss_cls = self.classification_loss(txt_embeds.view(batch_sz * seq_len, -1), texts.view(-1))
+            with torch.no_grad():
+                predict_result_ids = torch.max(txt_embeds, dim=2)[1]
+                correct_num = torch.sum(torch.logical_and(label_mask, predict_result_ids == texts))
+        else:
+            loss_cls, correct_num = torch.tensor(0.0).to(embeds), 0
+        assert correct_num <= instance_num
+        return loss_cls, correct_num, instance_num
+
+    def forward(self, images, labels, texts, mode):
         """
         input_ids: [batch_size, 1+n1+1+n2]
         images: [batch_size, n1+n2, res * res * chan]
@@ -86,6 +107,15 @@ class ImageReconstruct(nn.Module):
         assert mode in ['train', 'valid', 'test']
 
         input_embeds = self.forward_encoder(images)
-        loss_rec = self.forward_decoder(input_embeds, labels, images)[1]
+        _, pre_embeds, loss_rec = self.forward_decoder(input_embeds, labels, images)
+        # predict the character by embeds predicted
+        loss_cls_pre, correct_pre, instance_pre = self.forward_classification(pre_embeds, texts)
+        tar_embeds = self.forward_encoder(labels)
+        # predict the character by embeds targeted
+        loss_cls_ori, correct_ori, instance_ori = self.forward_classification(tar_embeds, texts)
+        assert instance_pre == instance_ori
 
-        return loss_rec * self.config['image_reconstruct_factor']
+        total_loss = loss_rec * self.config['image_reconstruct_factor'] + \
+            loss_cls_ori * self.image_classification_factor[0] + loss_cls_pre * self.image_classification_factor[1]
+
+        return total_loss, loss_rec, loss_cls_ori, loss_cls_pre, correct_ori, correct_pre, instance_ori

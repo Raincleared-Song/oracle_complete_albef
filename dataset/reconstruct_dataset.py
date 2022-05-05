@@ -10,8 +10,8 @@ from dataset.data_utils import resize_pad_image
 
 def process_image_reconstruct(book: dict, mids: list, config):
     img_res, img_mode, pad_color = config['image_res'], config['img_mode'], config['pad_color']
-    res_images = []
-    for cid, (_, image) in enumerate(book['characters']):
+    res_images, res_captions = [], []
+    for cid, (char, image) in enumerate(book['characters']):
         if cid not in mids:
             continue
         assert os.path.exists(os.path.join(config['data_prefix'], image))
@@ -21,8 +21,9 @@ def process_image_reconstruct(book: dict, mids: list, config):
                                         pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
                                         noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
         res_images.append((Image.fromarray(pad_img, mode=img_mode), Image.fromarray(pad_mask_img, mode=img_mode)))
+        res_captions.append(char)
     assert len(res_images) > 0
-    return res_images
+    return res_images, res_captions
 
 
 def is_valid_image(book, cid):
@@ -31,8 +32,8 @@ def is_valid_image(book, cid):
 
 
 class ImageReconstructDataset(Dataset):
-    def __init__(self, config, mode):
-        self.mode, self.data, self.config = config['dataset_mode'], [], config
+    def __init__(self, config, mode, tokenizer):
+        self.mode, self.data, self.config, self.tokenizer = config['dataset_mode'], [], config, tokenizer
         file_list = config['train_file'] if mode == 'train' else config['test_file']
         self.specific_test = config['specific_test'] and mode != 'train'
         for file in file_list:
@@ -93,7 +94,8 @@ class ImageReconstructDataset(Dataset):
 
     def __getitem__(self, index):
         book, mids = self.data[index]
-        image_ls = process_image_reconstruct(book, mids, self.config)
+        image_ls, caption_ls = process_image_reconstruct(book, mids, self.config)
         images = torch.cat([self.transform(img[1]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
         labels = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
-        return images, labels
+        texts = self.tokenizer.convert_tokens_to_ids(caption_ls)
+        return images, labels, texts

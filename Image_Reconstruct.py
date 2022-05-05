@@ -21,6 +21,7 @@ import torch.distributed as dist
 
 from models.model_image_reconstruct import ImageReconstruct
 from models.vit import interpolate_pos_embed
+from transformers import AutoTokenizer
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader, image_reconstruct_collate_fn
@@ -40,7 +41,16 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
 
     metric_logger = utils.MetricLogger(f_path=os.path.join(config['output_path'], "log_metric.txt"), delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
+    metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_cls_ori', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_cls_pre', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('correct_ori', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    metric_logger.add_meter('correct_pre', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    metric_logger.add_meter('instance_num', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
 
     header = 'Train Epoch: [{}]'.format(epoch)
     print_freq = 10
@@ -50,20 +60,28 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, labels, texts) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
 
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
+        texts = texts.to(device, non_blocking=True)
 
-        loss_rec = model(images, labels, 'train')
+        total_loss, loss_rec, loss_cls_ori, loss_cls_pre, correct_ori, correct_pre, instance_num = \
+            model(images, labels, texts, 'train')
 
-        loss_rec.backward()
+        total_loss.backward()
         optimizer.step()
 
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_rec=loss_rec.item())
+        metric_logger.update(loss_cls_ori=loss_cls_ori.item())
+        metric_logger.update(loss_cls_pre=loss_cls_pre.item())
+        metric_logger.update(correct_ori=correct_ori.item())
+        metric_logger.update(correct_pre=correct_pre.item())
+        metric_logger.update(instance_num=instance_num.item())
 
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
@@ -73,7 +91,9 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     metric_logger.log_default_metric()
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
-    res['global_loss'] = meters['loss_rec'].global_avg
+    res['global_loss'] = meters['total_loss'].global_avg
+    res['accuracy_ori'] = round(100 * meters['correct_ori'].total / meters['instance_num'].total, 2)
+    res['accuracy_pre'] = round(100 * meters['correct_pre'].total / meters['instance_num'].total, 2)
 
     return res
 
@@ -184,7 +204,16 @@ def test_epoch(args, model, data_loader, epoch, device, config):
 
     metric_logger = utils.MetricLogger(
         f_path=os.path.join(config['output_path'], f"log_{mod}_metric.txt"), delimiter="  ")
+    metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_cls_ori', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_cls_pre', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('correct_ori', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    metric_logger.add_meter('correct_pre', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
+    metric_logger.add_meter('instance_num', utils.SmoothedValue(
+        window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
 
     header = 'Valid Epoch: [{}]'.format(epoch)
     print_freq = 10
@@ -192,21 +221,31 @@ def test_epoch(args, model, data_loader, epoch, device, config):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, labels, texts) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
+        texts = texts.to(device, non_blocking=True)
 
-        loss_rec = model(images, labels, mod)
+        total_loss, loss_rec, loss_cls_ori, loss_cls_pre, correct_ori, correct_pre, instance_num = \
+            model(images, labels, texts, mod)
 
+        metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_rec=loss_rec.item())
+        metric_logger.update(loss_cls_ori=loss_cls_ori.item())
+        metric_logger.update(loss_cls_pre=loss_cls_pre.item())
+        metric_logger.update(correct_ori=correct_ori.item())
+        metric_logger.update(correct_pre=correct_pre.item())
+        metric_logger.update(instance_num=instance_num.item())
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     metric_logger.log_default_metric()
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
-    res['global_loss'] = meters['loss_rec'].global_avg
+    res['global_loss'] = meters['total_loss'].global_avg
+    res['accuracy_ori'] = round(100 * meters['correct_ori'].total / meters['instance_num'].total, 2)
+    res['accuracy_pre'] = round(100 * meters['correct_pre'].total / meters['instance_num'].total, 2)
 
     return res
 
@@ -258,10 +297,10 @@ def test(args, config, model, data_loader):
         print('Testing time {} for epoch {}'.format(total_time_str, epoch))
 
 
-def init_dataset(mode, config, distributed):
+def init_dataset(mode, config, distributed, tokenizer):
     # Dataset #
     print("Creating dataset")
-    datasets = [create_dataset('image_reconstruct', mode, config)]
+    datasets = [create_dataset('image_reconstruct', mode, config, tokenizer=tokenizer)]
 
     if distributed:
         num_tasks = utils.get_world_size()
@@ -289,15 +328,17 @@ def main(args, config):
     random.seed(seed)
     cudnn.benchmark = True
 
+    tokenizer = AutoTokenizer.from_pretrained(args.text_tokenizer)
+
     train_loader, test_loader = None, None
     if args.mode in ['train', 'both']:
-        train_loader = init_dataset('train', config, args.distributed)
+        train_loader = init_dataset('train', config, args.distributed, tokenizer)
     if args.mode in ['test', 'both']:
-        test_loader = init_dataset('test', config, args.distributed)
+        test_loader = init_dataset('test', config, args.distributed, tokenizer)
 
     # Model #
     print("Creating model")
-    model = name_to_model[config['model']](config=config, distributed=args.distributed)
+    model = name_to_model[config['model']](config=config, tokenizer=tokenizer, distributed=args.distributed)
     model = model.to(torch.device(args.device))
 
     if args.mode != 'test':
@@ -309,6 +350,7 @@ def main(args, config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/Image_Reconstruct.yaml')
+    parser.add_argument('--text_tokenizer', default='../guwenbert-base')  # MODIFIED
     parser.add_argument('--checkpoint', default='')
     parser.add_argument('--resume', default=False, type=bool)
     parser.add_argument('--device', default='cuda:0')

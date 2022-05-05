@@ -28,7 +28,7 @@ def create_dataset(dataset, mode, config, tokenizer=None):
         return dataset
 
     elif dataset == 'image_reconstruct':
-        dataset = ImageReconstructDataset(config, mode)
+        dataset = ImageReconstructDataset(config, mode, tokenizer)
         return dataset
 
     else:
@@ -150,16 +150,17 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
 
 
 def image_reconstruct_collate_fn(batch, img_pad_color=1.0):
-    images, labels = [], []
-    max_len = max(len(img) for img, _ in batch)
-    for image, label in batch:
-        assert len(image) == len(label)
+    images, labels, texts = [], [], []
+    max_len = max(len(img) for img, _, _ in batch)
+    for image, label, text in batch:
+        assert len(image) == len(label) == len(text)
         pad_len = max_len - len(image)
         image = torch.cat((image, torch.full((pad_len, image.shape[1]), img_pad_color)), dim=0)
         images.append(image.unsqueeze(0))
         label = torch.cat((label, torch.full((pad_len, label.shape[1]), img_pad_color)), dim=0)
         labels.append(label.unsqueeze(0))
-    return torch.cat(images, dim=0), torch.cat(labels, dim=0)
+        texts.append(text + [-100] * pad_len)
+    return torch.cat(images, dim=0), torch.cat(labels, dim=0), torch.LongTensor(texts)
 
 
 def create_sampler(datasets, shuffles, num_tasks, global_rank):
