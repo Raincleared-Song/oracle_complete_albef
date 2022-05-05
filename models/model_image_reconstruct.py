@@ -87,13 +87,13 @@ class ImageReconstruct(nn.Module):
     def forward_classification(self, embeds, texts):
         batch_sz, seq_len = texts.shape
         label_mask = texts != -100
-        instance_num = torch.sum(label_mask)
+        instance_num = torch.sum(label_mask).item()
         if sum(self.image_classification_factor) > 0:
             txt_embeds = self.classification_head(embeds)
             loss_cls = self.classification_loss(txt_embeds.view(batch_sz * seq_len, -1), texts.view(-1))
             with torch.no_grad():
                 predict_result_ids = torch.max(txt_embeds, dim=2)[1]
-                correct_num = torch.sum(torch.logical_and(label_mask, predict_result_ids == texts))
+                correct_num = torch.sum(torch.logical_and(label_mask, predict_result_ids == texts)).item()
         else:
             loss_cls, correct_num = torch.tensor(0.0).to(embeds), 0
         assert correct_num <= instance_num

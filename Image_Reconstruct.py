@@ -79,9 +79,9 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         metric_logger.update(loss_rec=loss_rec.item())
         metric_logger.update(loss_cls_ori=loss_cls_ori.item())
         metric_logger.update(loss_cls_pre=loss_cls_pre.item())
-        metric_logger.update(correct_ori=correct_ori.item())
-        metric_logger.update(correct_pre=correct_pre.item())
-        metric_logger.update(instance_num=instance_num.item())
+        metric_logger.update(correct_ori=correct_ori)
+        metric_logger.update(correct_pre=correct_pre)
+        metric_logger.update(instance_num=instance_num)
 
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
@@ -234,9 +234,9 @@ def test_epoch(args, model, data_loader, epoch, device, config):
         metric_logger.update(loss_rec=loss_rec.item())
         metric_logger.update(loss_cls_ori=loss_cls_ori.item())
         metric_logger.update(loss_cls_pre=loss_cls_pre.item())
-        metric_logger.update(correct_ori=correct_ori.item())
-        metric_logger.update(correct_pre=correct_pre.item())
-        metric_logger.update(instance_num=instance_num.item())
+        metric_logger.update(correct_ori=correct_ori)
+        metric_logger.update(correct_pre=correct_pre)
+        metric_logger.update(instance_num=instance_num)
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
