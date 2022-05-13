@@ -24,3 +24,7 @@ python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --chec
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --checkpoint output/finetune_single_mlm_np_mk75/checkpoint_59.pth --text_encoder '' --mode test
 
 grep -E "accuracy\": 8[3-9]\.[6-9]" log_test.txt
+
+python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
+  --text_checkpoint output/tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth \
+  --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth

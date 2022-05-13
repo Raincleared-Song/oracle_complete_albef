@@ -133,3 +133,11 @@ setting: batch 2, normal mode, ratio 0.0, text modality
 setting: batch 16, all_mask mode, text modality
 (tra) test result (52): epoch 15, hit_1/5/10/20: 54.2 / 77.94 / 83.74 / 87.1
 (tra) test result (com_mid): epoch 15, hit_1/5/10/20: 30.88 / 55.96 / 62.81 / 69.12
+
+20. tra_finetune_single_mlm_p0_load_cross01
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 1.0
+
+21. tra_finetune_single_mlm_p0_load_cross02
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none

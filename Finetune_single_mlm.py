@@ -175,6 +175,14 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
         print('loading complete:', msg)
         print('load checkpoint from %s' % args.checkpoint)
         print('baseline accuracy ' + str(cur_max_global_acc))
+    elif args.load_cross:
+        assert args.text_checkpoint != '' and args.image_checkpoint != ''
+        total_dict = torch.load(args.text_checkpoint, map_location='cpu')['model']
+        image_cp = torch.load(args.image_checkpoint, map_location='cpu')['model']
+        total_dict.update(image_cp)
+        for key in [k for k in total_dict.keys() if k.startswith('classification_head')]:
+            del total_dict[key]
+        model.load_state_dict(total_dict)
 
     model_without_ddp = model
     if args.distributed:
@@ -461,6 +469,9 @@ if __name__ == '__main__':
     parser.add_argument('--distributed', default=False, type=bool)  # MODIFIED
     parser.add_argument('--mode', choices=['train', 'test', 'both'], required=True)
     parser.add_argument('--save_all', default=True, type=bool)
+    parser.add_argument('--load_cross', action='store_true')
+    parser.add_argument('--text_checkpoint', default='', type=str)
+    parser.add_argument('--image_checkpoint', default='', type=str)
     main_args = parser.parse_args()
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'

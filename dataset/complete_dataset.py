@@ -318,7 +318,7 @@ class OracleCompleteSingleDataset(Dataset):
             book = self.data[index]
             book, _ = self.random_crop_characters(book)
             identity = book['book_name'] + '-' + str(book['row_order'])
-            image_ls, tokens = process_single_complete(self.data[index], self.config)
+            image_ls, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
                 input_ids, targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
