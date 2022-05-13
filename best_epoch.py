@@ -13,7 +13,7 @@ def main():
 
     checkpoints = os.listdir(f'output/{args.task}')
     metric_file = 'log_test.txt' if 'log_test.txt' in checkpoints else 'log_valid.txt'
-    checkpoints = sorted([cp for cp in checkpoints if cp.startswith('checkpoint_')])
+    checkpoints = sorted([cp for cp in checkpoints if cp.startswith('checkpoint_')], key=lambda x: int(x[11:-4]))
     print('got checkpoints count:', len(checkpoints))
 
     with open(f'output/{args.task}/{metric_file}') as fin:
@@ -23,6 +23,8 @@ def main():
         line = json.loads(line)
         assert args.metric in line and 'epoch' in line
         metric, epoch = line[args.metric], line['epoch']
+        if isinstance(metric, str):
+            metric = float(metric)
         if args.reverse and metric < chosen_metric or not args.reverse and metric > chosen_metric:
             chosen_metric = metric
             chosen_line = line
@@ -30,7 +32,7 @@ def main():
     assert chosen_line != {}
     print(chosen_line)
     print('chosen metric:', chosen_line[args.metric], 'chosen_epoch:', chosen_line['epoch'],
-          'last epoch:', int(checkpoints[-1][-6:-4]))
+          'last epoch:', int(checkpoints[-1][11:-4]))
 
     if args.remove:
         best_epoch, last_epoch = chosen_line['epoch'], int(checkpoints[-1][-6:-4])

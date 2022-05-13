@@ -37,11 +37,11 @@ def main():
             trans += int(save_flag)
             if save_flag or args.save_all:
                 img = tensor_to_img(embeds[sub_index], (3, 128, 128), mean, std)
-                img.save(f'output/{args.task}/test_embed_{index}{sub_index}.png')
+                img.save(f'output/{args.task}/test_{index}{sub_index}_embed.png')
                 img = tensor_to_img(targets[sub_index], (3, 128, 128), mean, std)
-                img.save(f'output/{args.task}/test_target_{index}{sub_index}.png')
+                img.save(f'output/{args.task}/test_{index}{sub_index}_target.png')
                 img = tensor_to_img(images[sub_index], (3, 128, 128), mean, std)
-                img.save(f'output/{args.task}/test_input_{index}{sub_index}.png')
+                img.save(f'output/{args.task}/test_{index}{sub_index}_input.png')
     print('transformed:', trans, 'total:', total)
 
 

@@ -16,9 +16,7 @@ class SingleMlm(nn.Module):
         roberta_config = RobertaConfig.from_json_file(config['bert_config'])
         self.distributed = distributed
         self.modality = config['modality'] if 'modality' in config else 'cross'
-        if self.modality == 'image':
-            pass
-        elif text_encoder:
+        if text_encoder:
             self.text_encoder = RobertaForMaskedLM.from_pretrained(text_encoder, config=roberta_config)
         else:
             self.text_encoder = RobertaForMaskedLM(config=roberta_config)

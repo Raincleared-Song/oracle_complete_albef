@@ -128,3 +128,8 @@ setting: batch 2, normal mode, mask 0.75, noise 0.25, ViT + Rec Loss * 1.0
 setting: batch 2, normal mode, ratio 0.0, text modality
 (tra) test result (52): epoch 39, hit_1/5/10/20: 52.89 / 76.88 / 83.73 / 87.18
 (tra) test result (com_mid): epoch 39, 49.47 / 76.32 / 85.26 / 90.18
+
+19. tra_finetune_single_mlm_p0_text_all
+setting: batch 16, all_mask mode, text modality
+(tra) test result (52): epoch 15, hit_1/5/10/20: 54.2 / 77.94 / 83.74 / 87.1
+(tra) test result (com_mid): epoch 15, hit_1/5/10/20: 30.88 / 55.96 / 62.81 / 69.12

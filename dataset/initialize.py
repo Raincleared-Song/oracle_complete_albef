@@ -187,7 +187,7 @@ def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collat
             dataset,
             batch_size=bs,
             num_workers=n_worker,
-            pin_memory=True,
+            # pin_memory=True,
             sampler=sampler,
             shuffle=shuffle,
             collate_fn=collate_fn,

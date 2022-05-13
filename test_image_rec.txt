@@ -1,0 +1,15 @@
+1. tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr3_upd
+epoch 117 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1209 / 94.21 / 48.08
+epoch 104 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1253 / 94.49 / 53.17
+
+2. tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd
+epoch 117 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1208 / 94.47 / 50.55
+epoch 65  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1546 / 94.68 / 54.49
+
+3. tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr3_upd
+epoch 116 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1694 / 94.70 / 48.93
+epoch 60  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2305 / 94.52 / 50.94
+
+4. tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd
+epoch 116 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1694 / 94.70 / 48.93
+epoch 43  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2509 / 94.88 / 51.46

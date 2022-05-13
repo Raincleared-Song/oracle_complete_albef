@@ -280,6 +280,24 @@ class OracleCompleteSingleDataset(Dataset):
 
         return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
+    def get_input_images(self, image_ls, masked_indices):
+        assert self.config['img_mask_policy'] in ['single', 'neighbour', 'all']
+        assert len(image_ls) == len(masked_indices)
+        assert np.sum(masked_indices) == 1  # temp
+        masked_id = np.nonzero(masked_indices)[0][0]
+        mask_ori_img = self.transform(image_ls[masked_id][0]).view(-1).unsqueeze(0)
+        assert masked_indices[masked_id] == 1
+        if self.config['img_mask_policy'] == 'neighbour':
+            if masked_id > 0:
+                masked_indices[masked_id - 1] = 1
+            if masked_id < len(masked_indices) - 1:
+                masked_indices[masked_id + 1] = 1
+        elif self.config['img_mask_policy'] == 'all':
+            masked_indices = [1] * len(masked_indices)
+        images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
+                            for img, masked in zip(image_ls, masked_indices)], dim=0)
+        return masked_id, images, mask_ori_img
+
     def random_crop_characters(self, book, mid=-1):
         limit, chars, new_mid = self.config['max_length'], book['characters'], mid
         new_book = book.copy()
@@ -304,12 +322,7 @@ class OracleCompleteSingleDataset(Dataset):
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
                 input_ids, targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
-                assert len(image_ls) == len(masked_indices)
-                images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
-                                    for img, masked in zip(image_ls, masked_indices)], dim=0)
-                assert np.sum(masked_indices) == 1  # temp
-                masked_id = np.nonzero(masked_indices)[0][0]
-                mask_ori_img = self.transform(image_ls[masked_id][0]).view(-1).unsqueeze(0)
+                masked_id, images, mask_ori_img = self.get_input_images(image_ls, masked_indices)
                 return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
@@ -323,12 +336,7 @@ class OracleCompleteSingleDataset(Dataset):
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
                 input_ids, targets, masked_indices, mask_id, mask_ch = self.mask_by_id(input_ids, mid + 1)
-                assert len(image_ls) == len(masked_indices)
-                images = torch.cat([self.transform(img[int(masked)]).view(-1).unsqueeze(0)
-                                    for img, masked in zip(image_ls, masked_indices)], dim=0)
-                assert np.sum(masked_indices) == 1  # temp
-                masked_id = np.nonzero(masked_indices)[0][0]
-                mask_ori_img = self.transform(image_ls[masked_id][0]).view(-1).unsqueeze(0)
+                masked_id, images, mask_ori_img = self.get_input_images(image_ls, masked_indices)
                 return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)

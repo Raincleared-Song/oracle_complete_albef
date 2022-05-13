@@ -75,9 +75,9 @@ class ImageReconstruct(nn.Module):
         img_pre = self.reconstruct_head(self.reconstruct_norm(embeds))
         loss = self.reconstruct_loss(img_pre, targets)
         # if images is None:
-        #     torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
+        #     torch.save([img_pre.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
         # else:
-        #     torch.save([embeds.cpu(), targets.cpu(), images.cpu()],
+        #     torch.save([img_pre.cpu(), targets.cpu(), images.cpu()],
         #                f'{self.config["output_path"]}/{self.rec_idx}.pth')
         # self.rec_idx += 1
         # if self.rec_idx == 10:
