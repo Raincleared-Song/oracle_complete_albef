@@ -137,7 +137,11 @@ setting: batch 16, all_mask mode, text modality
 20. tra_finetune_single_mlm_p0_load_cross01
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: mask25, single policy, ranoi, no rotate, rec 1.0
+(tra) test result (52): epoch 44, hit_1/5/10/20: 87.1 / 92.55 / 93.58 / 94.55
+(tra) test result (com_mid): epoch 44, hit_1/5/10/20: 63.68 / 84.21 / 88.42 / 91.75
 
 21. tra_finetune_single_mlm_p0_load_cross02
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: none
+(tra) test result (52): epoch 53, hit_1/5/10/20: 90.46 / 94.54 / 95.09 / 95.65
+(tra) test result (com_mid): epoch 53, hit_1/5/10/20: 72.46 / 89.47 / 92.28 / 94.39

@@ -9,10 +9,11 @@ def main():
     parser.add_argument('--metric', '-m', help='metric', default='valid_global_accuracy', type=str)
     parser.add_argument('--reverse', '-r', help='if set, choose the lowest metric', action='store_true')
     parser.add_argument('--remove', '-rm', help='if set, remove redundant checkpoints', action='store_true')
+    parser.add_argument('--use_test', action='store_true', help='if set, use log_test.txt')
     args = parser.parse_args()
 
     checkpoints = os.listdir(f'output/{args.task}')
-    metric_file = 'log_test.txt' if 'log_test.txt' in checkpoints else 'log_valid.txt'
+    metric_file = 'log_test.txt' if args.use_test else 'log_valid.txt'
     checkpoints = sorted([cp for cp in checkpoints if cp.startswith('checkpoint_')], key=lambda x: int(x[11:-4]))
     print('got checkpoints count:', len(checkpoints))
 

@@ -13,7 +13,7 @@ srun -G 1 -c 4 --mem 16g python3 Image_Reconstruct.py --config ./configs/Image_R
 python Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all/checkpoint_29.pth
 python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_53.pth
 python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd/checkpoint_43.pth
-python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_117.pth
+python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_lr4_upd/checkpoint_56.pth
 
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode train_valid
 python Sharpen_unet.py --config ./configs/Sharpen_unet.yaml --mode test --checkpoint output/handa_book_sharpen_unet_base_inv_96/checkpoint_09.pth
@@ -28,3 +28,10 @@ grep -E "accuracy\": 8[3-9]\.[6-9]" log_test.txt
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
   --text_checkpoint output/tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth \
   --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+
+# final best result for tiny manual set
+python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode test \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_cross01/checkpoint_44.pth
+
+python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode test \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_cross02/checkpoint_53.pth
