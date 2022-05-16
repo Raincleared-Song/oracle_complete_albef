@@ -29,6 +29,10 @@ python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text
   --text_checkpoint output/tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth \
   --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 
+srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
+  --text_checkpoint output/tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth \
+  --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+
 # final best result for tiny manual set
 python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode test \
   --checkpoint output/tra_finetune_single_mlm_p0_load_cross01/checkpoint_44.pth

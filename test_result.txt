@@ -142,6 +142,46 @@ transform: mask25, single policy, ranoi, no rotate, rec 1.0
 
 21. tra_finetune_single_mlm_p0_load_cross02
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
-transform: none
+transform: none, rec 1.0
 (tra) test result (52): epoch 53, hit_1/5/10/20: 90.46 / 94.54 / 95.09 / 95.65
 (tra) test result (com_mid): epoch 53, hit_1/5/10/20: 72.46 / 89.47 / 92.28 / 94.39
+
+22. tra_finetune_single_mlm_p0_load_cross03
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 1.0, all_mask mode
+
+23. tra_finetune_single_mlm_p0_load_cross04
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none, rec 1.0, all_mask mode
+
+24. tra_finetune_single_mlm_p0_load_cross05
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 0
+(tra) test result (52): epoch 44, hit_1/5/10/20:
+(tra) test result (com_mid): epoch 44, hit_1/5/10/20:
+
+25. tra_finetune_single_mlm_p0_load_cross06
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none, rec 0
+(tra) test result (52): epoch 53, hit_1/5/10/20:
+(tra) test result (com_mid): epoch 53, hit_1/5/10/20:
+
+26. tra_finetune_single_mlm_p0_load_cross07
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 0, all_mask mode
+
+27. tra_finetune_single_mlm_p0_load_cross04
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none, rec 0, all_mask mode
+
+28. tra_finetune_single_mlm_p0_load_text
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth
+transform: none, rec 0
+
+29. tra_finetune_single_mlm_p0_load_image_mk25
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 1.0
+
+30. tra_finetune_single_mlm_p0_load_image_ori
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none, rec 1.0

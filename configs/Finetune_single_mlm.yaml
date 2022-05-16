@@ -7,7 +7,7 @@ test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/tra_finetune_single_mlm_p0_load_cross01'
+output_path: 'output/tra_finetune_single_mlm_p0_load_cross05'
 
 image_res: 128
 batch_size: 2
@@ -26,7 +26,7 @@ max_length: 16
 
 visual_encoder: 'vit'
 encoder_layer: 12
-image_reconstruct_factor: 1.0
+image_reconstruct_factor: 0
 decoder_layer: 8
 mlm_probability: -1
 

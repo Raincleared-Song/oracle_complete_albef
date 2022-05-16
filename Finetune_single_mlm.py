@@ -176,12 +176,29 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
         print('load checkpoint from %s' % args.checkpoint)
         print('baseline accuracy ' + str(cur_max_global_acc))
     elif args.load_cross:
-        assert args.text_checkpoint != '' and args.image_checkpoint != ''
-        total_dict = torch.load(args.text_checkpoint, map_location='cpu')['model']
-        image_cp = torch.load(args.image_checkpoint, map_location='cpu')['model']
-        total_dict.update(image_cp)
-        for key in [k for k in total_dict.keys() if k.startswith('classification_head')]:
-            del total_dict[key]
+        if config['modality'] == 'cross':
+            assert args.text_checkpoint != '' and args.image_checkpoint != ''
+            total_dict = torch.load(args.text_checkpoint, map_location='cpu')['model']
+            image_cp = torch.load(args.image_checkpoint, map_location='cpu')['model']
+            total_dict.update(image_cp)
+            for key in [k for k in total_dict.keys() if k.startswith('classification_head')]:
+                del total_dict[key]
+            if config['image_reconstruct_factor'] <= 0:
+                for key in [k for k in total_dict.keys() if k.startswith('reconstruct_')]:
+                    del total_dict[key]
+        elif config['modality'] == 'text':
+            assert args.text_checkpoint != ''
+            total_dict = torch.load(args.text_checkpoint, map_location='cpu')['model']
+        else:
+            assert args.image_checkpoint != ''
+            total_dict = torch.load(args.image_checkpoint, map_location='cpu')['model']
+            for key in [k for k in total_dict.keys() if k.startswith('classification_head')]:
+                del total_dict[key]
+            # initialize text encoder normally
+            text_null_dict = {}
+            for key, val in model.text_encoder.state_dict().items():
+                text_null_dict['text_encoder.' + key] = val
+            total_dict.update(text_null_dict)
         model.load_state_dict(total_dict)
 
     model_without_ddp = model
