@@ -10,7 +10,7 @@ test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec'
+output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new'
 
 image_res: 128
 batch_size: 2
