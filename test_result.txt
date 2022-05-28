@@ -157,31 +157,88 @@ transform: none, rec 1.0, all_mask mode
 24. tra_finetune_single_mlm_p0_load_cross05
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: mask25, single policy, ranoi, no rotate, rec 0
-(tra) test result (52): epoch 44, hit_1/5/10/20:
-(tra) test result (com_mid): epoch 44, hit_1/5/10/20:
+(tra) test result (52): epoch 52, hit_1/5/10/20: 87.22 / 92.81 / 93.87 / 94.75
 
 25. tra_finetune_single_mlm_p0_load_cross06
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: none, rec 0
-(tra) test result (52): epoch 53, hit_1/5/10/20:
-(tra) test result (com_mid): epoch 53, hit_1/5/10/20:
+(tra) test result (52): epoch 56, hit_1/5/10/20: 91.26 / 94.55 / 95.4 / 95.94
 
 26. tra_finetune_single_mlm_p0_load_cross07
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: mask25, single policy, ranoi, no rotate, rec 0, all_mask mode
 
-27. tra_finetune_single_mlm_p0_load_cross04
+27. tra_finetune_single_mlm_p0_load_cross08
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: none, rec 0, all_mask mode
 
 28. tra_finetune_single_mlm_p0_load_text
 tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth
 transform: none, rec 0
+(tra) test result (52): epoch 57, hit_1/5/10/20: 53.86 / 77.81 / 83.86 / 87.4
 
 29. tra_finetune_single_mlm_p0_load_image_mk25
 tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: mask25, single policy, ranoi, no rotate, rec 1.0
+(tra) test result (52): epoch 39, hit_1/5/10/20: 86.29 / 92.43 / 93.59 / 94.6
 
 30. tra_finetune_single_mlm_p0_load_image_ori
 tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 transform: none, rec 1.0
+(tra) test result (52): epoch 37, hit_1/5/10/20: 92.29 / 95.55 / 96.02 / 96.62
+
+31. tra_finetune_single_mlm_p0_load_image_mk50
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 1.0
+(tra) test result (52): epoch 43, hit_1/5/10/20: 82.98 / 90.33 / 92.08 / 93.54
+
+32. tra_finetune_single_mlm_p0_nmk50_ranoi_vit_rec
+normal setting, not full data, cross modal, neighbour mask50
+(tra) test result (52): epoch 57, hit_1/5/10/20: 77.99 / 88.03 / 90.3 / 91.86
+
+33. tra_finetune_single_mlm_p0_nmk50_ranoi_image_vit_rec
+normal setting, not full data, image modal, neighbour mask50
+(tra) test result (52): epoch 49, hit_1/5/10/20: 76.68 / 87.33 / 90.12 / 91.78
+
+34. tra_finetune_single_mlm_p0_smk50_ranoi_vit_rec
+normal setting, not full data, cross modal, single mask50
+(tra) test result (52): epoch 48, hit_1/5/10/20: 79.44 / 89.21 / 91.31 / 92.78
+
+35. tra_finetune_single_mlm_p0_smk50_ranoi_image_vit_rec
+normal setting, not full data, image modal, single mask50
+(tra) test result (52): epoch 53, hit_1/5/10/20: 77.21 / 86.96 / 89.3 / 91.29
+
+36. tra_finetune_single_mlm_p0_load_cross09
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 1.0
+(tra) test result (52): epoch 44, hit_1/5/10/20:
+
+37. tra_finetune_single_mlm_p0_load_cross10
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 0
+(tra) test result (52): epoch 44, hit_1/5/10/20:
+
+38. tra_finetune_single_mlm_p0_load_image_mk25_unrec
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask25, single policy, ranoi, no rotate, rec 0
+(tra) test result (52): epoch 39, hit_1/5/10/20:
+
+39. tra_finetune_single_mlm_p0_load_image_ori_unrec
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: none, rec 0
+(tra) test result (52): epoch 37, hit_1/5/10/20:
+
+40. tra_finetune_single_mlm_p0_load_image_mk50_unrec
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 0
+(tra) test result (52): epoch 43, hit_1/5/10/20:
+
+41. tra_finetune_single_mlm_p0_load_cross11
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 1.0, all_mask mode
+(tra) test result (52): epoch 44, hit_1/5/10/20:
+
+42. tra_finetune_single_mlm_p0_load_cross12
+tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth + tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+transform: mask50, single policy, ranoi, no rotate, rec 0, all_mask mode
+(tra) test result (52): epoch 44, hit_1/5/10/20:

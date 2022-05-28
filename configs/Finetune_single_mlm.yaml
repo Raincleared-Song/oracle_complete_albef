@@ -1,19 +1,22 @@
-train_file: ['handa/data_filter_tra_train.json']
+train_file: ['handa/data_filter_tra_train_new.json']
 #test_file: ['handa/data_filter_tra_test.json']
 #test_file: ['handa/cases_com_tra_mid.json']
 test_file: ['handa/log_case_test_52_data.json']
-#test_file: ['handa/data_filter_tra_train_com.json', 'handa/data_filter_tra_test_com.json']
+#test_file: ['handa/data_filter_tra_all_com_mid.json']
+#test_file: ['handa/cases_com_tra_mid_combine.json']  # 1648 complete combine data
+#test_file: ['handa/cases_com_tra_mid_new.json']  # 1067 complete data
+#test_file: ['handa/cases_com_tra_mid_new_not_perfect.json']  # 156 not perfect complete data
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
 bert_config: './configs/config_roberta.json'
 data_prefix: '../hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/tra_finetune_single_mlm_p0_load_cross05'
+output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec'
 
 image_res: 128
 batch_size: 2
 img_mode: 'RGB'
 dataset_mode: 'normal'
-modality: 'cross'
+modality: 'image'
 img_random_transform: true
 img_mask_ratio: 0.25
 img_mask_policy: 'single'

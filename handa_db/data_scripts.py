@@ -159,12 +159,12 @@ def label_inverse():
             img.save(os.path.join(dst_pth, image))
 
 
-def gen_real_complete_data():
-    train_data = load_json('../hanzi_filter/handa/data_filter_tra_train.json')
+def gen_real_complete_data(file_input: str, answer_output: str, file_output: str):
+    train_data = load_json('../hanzi_filter/handa/data_filter_tra_train_new.json')
     train_set = set()
     for book in train_data:
         train_set.add((book['book_name'], book['row_order']))
-    with open('handa/据图及上下文推断top20字.txt', encoding='utf-8') as fin:
+    with open(file_input, encoding='utf-8') as fin:
         lines = fin.readlines()
     lines = [line.strip() for line in lines if len(line.strip()) > 0 and line[0].isalpha()]
     lines = list(set(lines))
@@ -187,7 +187,7 @@ def gen_real_complete_data():
     print(len(inter_set), sum(len(val) for val in part_to_data.values()))
     exit()
     all_data = []
-    fout = open('handa/answer.txt', 'w', encoding='utf-8')
+    fout = open(answer_output, 'w', encoding='utf-8')
     for part, images in part_to_data.items():
         meta = load_json(f'../hanzi_filter/handa/{part}/oracle_meta_{part}.json')
         candidate_set = {}
@@ -222,6 +222,8 @@ def gen_real_complete_data():
                     mask_ids.append(cid)
                     fout.write('\t'.join([book_name, str(order), char['img'], char['char']]) + '\n')
                 chars.append((char['char'], f'handa/{part}/characters/{char["img"]}'))
+            if to_test != len(images):
+                print(book, images)
             assert to_test == len(images)
             for mid in mask_ids:
                 all_data.append(({
@@ -231,7 +233,7 @@ def gen_real_complete_data():
                 }, mid))
     fout.close()
     print(len(all_data))
-    save_json(all_data, '../hanzi_filter/handa/cases_com_tra_mid.json')
+    save_json(all_data, file_output)
 
 
 def test_log_to_data(path: str, batch_size=4):
@@ -301,6 +303,157 @@ def find_test_vague():
     save_json(sample_data, '../hanzi_filter/handa/log_case_test_52_hard100.json')
 
 
+def generate_new_train_set(file_input: str):
+    train_data = load_json('../hanzi_filter/handa/data_filter_tra_train.json')
+    print(len(train_data))  # 24648
+    with open(file_input, encoding='utf-8') as fin:
+        lines = fin.readlines()
+    lines = [line.strip() for line in lines if len(line.strip()) > 0 and line[0].isalpha()]
+    lines = list(set(lines))
+    print(len(lines))
+    new_train_set, exist_train_set = [], set()
+    for line in tqdm(lines):
+        tokens = line[:-4].split('-')
+        assert len(tokens) == 3
+        exist_train_set.add((tokens[0], int(tokens[1])))
+    for book in train_data:
+        if (book['book_name'], book['row_order']) not in exist_train_set:
+            new_train_set.append(book)
+    print(len(new_train_set))  # 24182
+    save_json(new_train_set, '../hanzi_filter/handa/data_filter_tra_train_new.json')
+
+
+def generate_complete_mid():
+    data = []
+    for f in ['handa/data_filter_tra_train_com.json', 'handa/data_filter_tra_test_com.json']:
+        for book in load_json(f'../hanzi_filter/{f}'):
+            for cid, (ch, _) in enumerate(book['characters']):
+                if ch == '■':
+                    data.append((book, cid))
+    save_json(data, '../hanzi_filter/handa/data_filter_tra_all_com_mid.json')
+
+
+def data_stat(data):
+    count, chs, books = 0, set(), set()
+    for book in data:
+        if isinstance(book, list) or isinstance(book, tuple):
+            book = book[0]
+        for ch, img in book['characters']:
+            if not img.startswith('handa/extra'):
+                chs.add(ch)
+                count += 1
+        books.add((book['book_name'], book['row_order']))
+    print('stat:', count, len(chs), len(books))
+
+
+def generate_test_set():
+    data1 = load_json('../hanzi_filter/handa/cases_com_tra_mid_new.json')
+    data2 = load_json('../hanzi_filter/handa/cases_com_tra_mid.json')
+    print(len(data1), len(data2))
+    set1, set2 = set(), set()
+    all_data = []
+    for book, mid in data1:
+        set1.add((book['book_name'], book['row_order'], mid))
+        all_data.append((book, mid))
+    for book, mid in data2:
+        if (book['book_name'], book['row_order'], mid) not in set1:
+            set2.add((book['book_name'], book['row_order'], mid))
+            all_data.append((book, mid))
+    assert len(set1 & set2) == 0
+    print(len(all_data))  # 1648
+    data_stat(all_data)   # 13213 640 1032
+    save_json(all_data, '../hanzi_filter/handa/cases_com_tra_mid_combine.json')
+
+
+def check_confusing_characters(path: str):
+    with open(path, encoding='utf-8') as fin:
+        lines = fin.readlines()
+    count = {
+        '七': {}, '甲': {},
+        '月': {}, '夕': {},
+        '田': {}, '㘡': {},
+    }
+    pairs = {
+        '七': '甲', '甲': '七',
+        '月': '夕', '夕': '月',
+        '田': '㘡', '㘡': '田',
+    }
+    correct_ans, wrong_ans = 0, 0
+    for line in lines:
+        line = line.strip()
+        res = re.findall(r'([^\t]+)\t\(\d+, \d+\)', line)
+        if len(res) > 0:
+            assert len(res) == 1
+            correct_ans += 1
+        for lab in res:
+            if lab in count:
+                target = count[lab]
+                target.setdefault('ori', 0)
+                target['ori'] += 1
+        res = re.findall(r'\'([^ ]+) ([^ ]+) \(\d+, \d+\)\'', line)
+        for lab, pre in res:
+            wrong_ans += 1
+            if lab in count:
+                target = count[lab]
+                key = 'pre' if pre == pairs[lab] else 'oth'
+                target.setdefault(key, 0)
+                target[key] += 1
+    print(correct_ans, wrong_ans)
+    for key, val in count.items():
+        val.setdefault('ori', 0)
+        val.setdefault('pre', 0)
+        val.setdefault('oth', 0)
+        print(key, val['ori'], val['pre'], val['oth'])
+
+
+def test_char_context(data: list, ch: str):
+    pre_count, suf_count, count = {}, {}, 0
+    for book in data:
+        if isinstance(book, list) or isinstance(book, tuple):
+            book = book[0]
+        chars = book['characters']
+        for i, (cur_ch, _) in enumerate(chars):
+            if cur_ch == ch:
+                count += 1
+                key = (chars[i-1][0] if i != 0 else '^') + chars[i][0]
+                pre_count.setdefault(key, 0)
+                pre_count[key] += 1
+                key = chars[i][0] + (chars[i+1][0] if i != len(chars) - 1 else '$')
+                suf_count.setdefault(key, 0)
+                suf_count[key] += 1
+    return pre_count, suf_count, count
+
+
+def find_bad_case(path: str):
+    with open(path, encoding='utf-8') as fin:
+        lines = fin.readlines()
+    cur_wrong_chs, cur_topk_20 = [], []
+    sample_idx = 0
+    for line in lines:
+        line = line.strip()
+        if line.startswith('-------------'):
+            assert len(cur_topk_20) == 2
+            for correct, wrong, idx in cur_wrong_chs:
+                idx = int(idx)
+                topk_20 = cur_topk_20[idx]
+                exist = False
+                for ch, rate in topk_20:
+                    if ch == correct:
+                        exist = True
+                        break
+                if not exist:
+                    yield sample_idx + idx
+            sample_idx += len(cur_topk_20)
+            cur_wrong_chs, cur_topk_20 = [], []
+            continue
+        elif line.startswith('Wrong:'):
+            cur_wrong_chs = re.findall(r'\'([^ ]+) ([^ ]+) \((\d+), \d+\)\'', line)
+        elif line.startswith('Top20:'):
+            topk_20 = re.findall(r'\'([^ ]+)\', ([0-1]\.\d+)', line)
+            assert len(topk_20) == 20
+            cur_topk_20.append(topk_20)
+
+
 if __name__ == '__main__':
     # find_test_vague()
     # check_data()
@@ -309,5 +462,21 @@ if __name__ == '__main__':
     # main()
     # get_complete_data()
     # label_inverse()
-    gen_real_complete_data()
+    find_bad_case('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/log_case_test_45_1648_cross_mk25.txt')
+    exit()
+    check_confusing_characters('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new'
+                               '/log_case_test_45_1648_cross_mk25.txt')
+    check_confusing_characters('output/tra_finetune_single_mlm_p1_load_image_mk50_unrec_uncls_new'
+                               '/log_case_test_57_1648_image.txt')
+    check_confusing_characters('output/tra_finetune_single_mlm_p0_text_all_new'
+                               '/log_case_test_20_1648.txt')
+    gen_real_complete_data('handa/据图及上下文推断top20字.txt', 'handa/answer.txt',
+                           '../hanzi_filter/handa/cases_com_tra_mid.json')
+    # gen_real_complete_data('handa/2022-05-21_res_char_to_songchenyang.txt', 'handa/answer_new.txt',
+    #                        '../hanzi_filter/handa/cases_com_tra_mid_new.json')
+    # gen_real_complete_data('handa/2022-05-21_res_char_to_songchenyang_not_perfect.txt', 'handa/answer_new_not.txt',
+    #                        '../hanzi_filter/handa/cases_com_tra_mid_new_not_perfect.json')
+    # generate_new_train_set('handa/2022-05-21_res_char_to_songchenyang.txt')
     # output_threshold()
+    # generate_complete_mid()
+    generate_test_set()

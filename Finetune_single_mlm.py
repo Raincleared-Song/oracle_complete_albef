@@ -194,6 +194,9 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             total_dict = torch.load(args.image_checkpoint, map_location='cpu')['model']
             for key in [k for k in total_dict.keys() if k.startswith('classification_head')]:
                 del total_dict[key]
+            if config['image_reconstruct_factor'] <= 0:
+                for key in [k for k in total_dict.keys() if k.startswith('reconstruct_')]:
+                    del total_dict[key]
             # initialize text encoder normally
             text_null_dict = {}
             for key, val in model.text_encoder.state_dict().items():
@@ -360,10 +363,14 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
     res['global_accuracy'] = round(100 * meters['correct_num'].total / meters['instance_num'].total, 2)
+    hits = []
     for k in config['topk']:
-        res[f'global_hit_{k}'] = round(100 * meters[f'hit_correct_{k}'].total / meters['instance_num'].total, 2)
+        hit = round(100 * meters[f'hit_correct_{k}'].total / meters['instance_num'].total, 2)
+        res[f'global_hit_{k}'] = hit
         res[f'global_rank_acc_{k}'] = round(
             100 * meters[f'rank_correct_{k}'].total / meters[f'rank_instance_{k}'].total, 2)
+        hits.append(f'{hit:.2f}')
+    print(f'topks: {config["topk"]} hits: {" / ".join(hits)}')
 
     if save_cases:
         f_case.close()
@@ -489,11 +496,17 @@ if __name__ == '__main__':
     parser.add_argument('--load_cross', action='store_true')
     parser.add_argument('--text_checkpoint', default='', type=str)
     parser.add_argument('--image_checkpoint', default='', type=str)
+    parser.add_argument('--test_files', help='multiple files seperated with \',\'', default='', type=str)
+    parser.add_argument('--do_trans', choices=['', 'true', 'false'], default='', type=str)
     main_args = parser.parse_args()
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
     main_config = yaml.load(open(main_args.config, 'r'), Loader=yaml.Loader)
+    if main_args.test_files != '':
+        main_config['test_file'] = main_args.test_files.split(',')
+    if main_args.do_trans != '':
+        main_config['img_random_transform'] = True if main_args.do_trans == 'true' else False
 
     Path(main_config['output_path']).mkdir(parents=True, exist_ok=True)
     if main_args.mode in ['train', 'both']:

@@ -31,7 +31,7 @@ def random_mask(image: np.ndarray, pad_color=0, mask_ratio=0.0) -> np.ndarray:
     rnd, rnd_mk = random.random(), random.random()
     mask_probs = [0.2, 0.4, 0.6, 0.8]
     mask_mk_prob = 0.2
-    assert mask_ratio in [0.0, 0.25, 0.5, 0.75]
+    assert mask_ratio in [0.0, 0.25, 0.5, 0.75, 1.0]
     if rnd < mask_probs[0]:
         # 不做覆盖
         pass

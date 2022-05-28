@@ -4,7 +4,7 @@ epoch 104 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1253 / 94.
 
 2. tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd
 epoch 117 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1208 / 94.47 / 50.55
-epoch 65  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1546 / 94.68 / 54.49
+*** epoch 65  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1546 / 94.68 / 54.49
 
 3. tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr3_upd
 epoch 116 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1694 / 94.70 / 48.93
@@ -13,3 +13,37 @@ epoch 60  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2305 / 94.
 4. tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd
 epoch 116 valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1694 / 94.70 / 48.93
 epoch 43  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2509 / 94.88 / 51.46
+
+5. tra_image_reconstruct_vit_all_mk25_ranoi_lr4_upd
+*** epoch 52 valid_loss_rec 0.0674
+
+6. tra_image_reconstruct_vit_all_cls_lr4_upd
+*** epoch 44  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 1.2660 / 94.34 / 71.03
+epoch 59  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 1.2577 / 93.76 / 60.36
+
+7. tra_image_reconstruct_vit_all_mk50_ranoi_cls_lr4_upd
+epoch 28  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2419 / 94.68 / 50.32
+epoch 55  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2385 / 95.22 / 48.51
+epoch 45  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2356 / 95.12 / 45.83
+
+8. tra_image_reconstruct_vit_all_mk50_ranoi_cls_lr4_fac10_upd
+epoch 44  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1821 / 95.12 / 45.93
+*** epoch 43  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1767 / 94.73 / 48.39
+epoch 58  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.1732 / 94.68 / 42.64
+
+9. tra_image_reconstruct_vit_all_mk75_ranoi_cls_lr4_fac10_upd
+rec10 + OIC + RIC, mk75
+epoch 58  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2373 / 94.7 / 25.4
+epoch 48  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2397 / 95.03 / 26.69
+*** epoch 28  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.2390 / 94.64 / 29.61
+
+10. tra_image_reconstruct_vit_all_ori_cls_lr4_upd
+- rec - RIC, mk25
+epoch 61  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 1.2571 / 93.84 / 44.04
+epoch 41  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 1.2688 / 94.51 / 43.37
+*** epoch 50  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 1.2617 / 94.03 / 45.98
+
+11. tra_image_reconstruct_vit_all_mk25_ori_cls_lr4_upd
+- RIC, mk25
+epoch 60  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.0878 / 94.08 / 3.88
+*** epoch 55  valid_loss_rec / valid_accuracy_ori / valid_accuracy_pre: 0.0893 / 94.36 / 2.54
