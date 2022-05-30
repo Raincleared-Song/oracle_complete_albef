@@ -1,5 +1,5 @@
 # Oracle Completion (ALBEF)
-The source code for graduation project *Completion of Oracle Bone Inscription Contents with Cross-Modal Language Model*. (Based on ALBEF)
+The source code for graduation project *Completion of Oracle Bone Inscription Contents with Cross-Modal Model*. (Based on ALBEF)
 ### Environment
 The environment is managed by anaconda3. Details are provided in the file `env.yaml`
 ### Training
