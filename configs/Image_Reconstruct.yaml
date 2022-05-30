@@ -3,7 +3,7 @@ train_file: ['handa/data_complete_tra_train.json']
 #test_file: ['handa/cases_com_tra_mid.json']
 test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
-data_prefix: '../hanzi_filter'
+data_prefix: '/data/private/songchenyang/hanzi_filter'
 model: 'ImageReconstruct'
 output_path: 'output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd'
 
