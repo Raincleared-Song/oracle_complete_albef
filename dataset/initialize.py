@@ -6,13 +6,12 @@ from dataset.data_utils import resize_pad_image
 from dataset.complete_dataset import OracleCompleteDataset, OracleCompleteSingleDataset
 from dataset.sharpen_dataset import SharpenDataset
 from dataset.reconstruct_dataset import ImageReconstructDataset
+from dataset.classification_dataset import ImageClassificationDataset
 
 
 def create_dataset(dataset, mode, config, tokenizer=None):
     if dataset == 'pretrain':
-        # MODIFIED
         dataset = OracleCompleteDataset(config, mode, tokenizer, add_mask=False)
-        # dataset = pretrain_dataset(config, mode, pretrain_transform)
         return dataset
 
     elif dataset == 'finetune_mlm':
@@ -29,6 +28,10 @@ def create_dataset(dataset, mode, config, tokenizer=None):
 
     elif dataset == 'image_reconstruct':
         dataset = ImageReconstructDataset(config, mode, tokenizer)
+        return dataset
+
+    elif dataset == 'image_classification':
+        dataset = ImageClassificationDataset(config, mode)
         return dataset
 
     else:
@@ -161,6 +164,14 @@ def image_reconstruct_collate_fn(batch, img_pad_color=1.0):
         labels.append(label.unsqueeze(0))
         texts.append(text + [-100] * pad_len)
     return torch.cat(images, dim=0), torch.cat(labels, dim=0), torch.LongTensor(texts)
+
+
+def image_classification_collate_fn(batch):
+    images, labels = [], []
+    for image, label in batch:
+        images.append(image)
+        labels.append(label)
+    return torch.cat(images, dim=0), torch.LongTensor(labels)
 
 
 def create_sampler(datasets, shuffles, num_tasks, global_rank):

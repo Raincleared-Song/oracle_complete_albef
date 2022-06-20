@@ -1,1 +1,1 @@
-from .initialize import init_db, CharShape, Character, BoneRow
+from .initialize import init_db, CharFace, Character, ChantOracleBoneItems

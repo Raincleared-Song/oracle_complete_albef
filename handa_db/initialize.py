@@ -7,7 +7,7 @@ from tqdm import tqdm
 from utils import load_json, save_json
 from peewee import IntegerField, TextField, AutoField, Model, SqliteDatabase, CharField
 
-db = SqliteDatabase('chant_oracle_new.db')
+db = SqliteDatabase('chant_oracle_manual.db')
 
 
 class BaseModel(Model):
@@ -111,8 +111,12 @@ class CharFace(BaseModel):
     match_case = IntegerField(null=False, index=True, column_name='match_case')
     # 属于哪一个标准字 Character.id，索引字段，原 char_belong，可以由此索引到一级和二级字头
     standard_character_id = IntegerField(null=False, index=True, column_name='standard_character_id')
-    # 属于哪一个标准字，包含了汉达/摹本的现代汉字标准字，默认为空
-    standard_character = CharField(null=False, default="", max_length=7, column_name='standard_character')
+    # 属于哪一个一级标准字，包含了汉达/摹本的现代汉字标准字，默认为空
+    first_order_standard_character = CharField(null=False, default="", max_length=7,
+                                               column_name='first_order_standard_character')
+    # 二级字头，新增列，默认为空，对应《甲骨文字编》里面的所谓”字义“
+    second_order_standard_character = IntegerField(null=False, default=-1,
+                                                   column_name='second_order_standard_character')
     # 在汉达文库甲片图中的坐标信息，可能为空（match_case == 1），原 coords
     chant_coordinates = CharField(null=False, max_length=63, column_name='chant_coordinates')
     # 原形，即汉达文库中带背景的噪声图片路径，最大长度 511 字符，可能为空（match_case == 1），原 noise_image
@@ -154,20 +158,18 @@ def gen_book_char_stat():
     handa_base = '/var/lib/shared_volume/data/private/songchenyang/hanzi_filter/handa'
     handa_parts = ['B', 'D', 'H', 'L', 'S', 'T', 'W', 'Y', 'HD']
     book_char_to_count = {}
-    converter = opencc.OpenCC('t2s.json')
 
     for part in handa_parts:
         meta = load_json(f'{handa_base}/{part}/oracle_meta_{part}.json')
         for book in tqdm(meta, desc=part):
             book_name = book['book_name']
             for char in book['l_chars']:
-                ch = re.sub(r'</?[^>]+>|[ ]', '', char['char']).strip()
-                ch = converter.convert(ch)
+                ch = re.sub(r'</?[^>]+>| ', '', char['char']).strip()
                 if (book_name, ch) not in book_char_to_count:
                     book_char_to_count[(book_name, ch)] = 0
                 book_char_to_count[(book_name, ch)] += 1
     book_char_to_count = [(book_name, ch, count) for (book_name, ch), count in book_char_to_count.items()]
-    save_json(book_char_to_count, 'output/book_char_to_count.json')
+    save_json(book_char_to_count, 'output/tra_book_char_to_count.json')
 
 
 def gen_char_to_indexes():

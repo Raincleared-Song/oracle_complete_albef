@@ -69,3 +69,5 @@ srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finet
 # - RIC
 srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
   --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ori_cls_lr4_upd/checkpoint_55.pth
+
+srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Image_Classification.yaml --mode both --save_all=true
