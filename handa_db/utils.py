@@ -3,7 +3,7 @@ import json
 
 def load_json(path: str):
     print(f'loading file {path} ......')
-    file = open(path)
+    file = open(path, 'r', encoding='utf-8')
     res = json.load(file)
     file.close()
     return res
@@ -11,7 +11,7 @@ def load_json(path: str):
 
 def save_json(obj: object, path: str):
     print(f'saving file {path} ......')
-    file = open(path, 'w')
+    file = open(path, 'w', encoding='utf-8')
     json.dump(obj, file)
     file.close()
 

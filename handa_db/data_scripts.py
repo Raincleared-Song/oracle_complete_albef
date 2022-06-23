@@ -2,6 +2,7 @@ import os
 import re
 import cv2
 import math
+import copy
 import shutil
 import random
 import numpy as np
@@ -454,6 +455,115 @@ def find_bad_case(path: str):
             cur_topk_20.append(topk_20)
 
 
+def round_up(value):
+    if not isinstance(value, np.ndarray):
+        return int(value + 0.5)
+    else:
+        return (value + 0.5).astype(int)
+
+
+def extract_rotated_rectangle(image: np.ndarray, x: float, y: float, w: float, h: float, rot: float) -> np.ndarray:
+    """
+    image: cv2.imread 得到的图片矩阵
+    x, y, w, h, rot: 对应 x, y, width, height, rotation
+    """
+    height, width, n_chan = image.shape
+    x = width * x / 100
+    y = height * y / 100
+    w = width * w / 100
+    h = height * h / 100
+    rot = rot * np.pi / 180  # 弧度制，顺时针旋转角
+    # vertexes
+    cnt = np.array([
+        [[x, y]],
+        [[x - h * np.sin(rot), y + h * np.cos(rot)]],
+        [[x - h * np.sin(rot) + w * np.cos(rot), y + h * np.cos(rot) + w * np.sin(rot)]],
+        [[x + w * np.cos(rot), y + w * np.sin(rot)]],
+    ])
+    rect = cv2.minAreaRect(round_up(cnt))
+
+    # the order of the box points: bottom left, top left, top right, bottom right
+    box = round_up(cv2.boxPoints(rect))
+    # adjust the order
+    if abs(box[0][0] - box[1][0]) > abs(box[0][0] - box[3][0]):
+        temp_box = box.copy()
+        box[0, :] = temp_box[3, :]
+        box[1:4, :] = temp_box[0:3, :]
+        rec_h = round_up(rect[1][0])
+        rec_w = round_up(rect[1][1])
+    else:
+        # get width and height of the detected rectangle
+        rec_w = round_up(rect[1][0])
+        rec_h = round_up(rect[1][1])
+    # cv2.drawContours(image, [box], 0, (0, 0, 255), 2)
+
+    src_pts = box.astype("float32")
+    assert src_pts.shape == (4, 2)
+    # coordinate of the points in box points after the rectangle has been straightened
+    dst_pts = np.array([
+        [0, rec_h - 1],
+        [0, 0],
+        [rec_w - 1, 0],
+        [rec_w - 1, rec_h - 1],
+    ])
+    dst_pts = dst_pts.astype("float32")
+    # the perspective transformation matrix
+    mat = cv2.getPerspectiveTransform(src_pts, dst_pts)
+    # directly warp the rotated rectangle to get the straightened rectangle
+    wrapped = cv2.warpPerspective(image, mat, (rec_w, rec_h))
+    return wrapped
+
+
+def generate_case_file():
+    path_base = 'handa/2022-06-21_DEMO_H00137_to_SongChenyang'
+    data = load_json('/'.join([path_base, 'H00137annotation.json']))[0]['annotations'][0]['result']
+    data = [item['value'] for item in data]
+    lab_data = [item['labels'][0].startswith('Damaged_inscription') for item in data if 'labels' in item]
+    txt_data = [item for item in data if 'text' in item]
+    # 104 104 13
+    print(len(lab_data), len(txt_data), sum(lab_data), [item['text'][0] for item in txt_data])
+    # ['小', '卯', '芻', '𦎫', '丑', '卜', '㞢', '𡆥', '允', '\U000fe033', '尿', '于', '彔']
+    print([txt['text'][0] for txt, lab in zip(txt_data, lab_data) if lab])
+    lengths = [2, 1, 1, 1, 1, 1, 6, 26, 33, 32]
+    assert sum(lengths) == len(lab_data) == len(txt_data)
+    image = cv2.imread('/'.join([path_base, 'H00137zheng.jpg']))
+    print(image.shape)  # (3658, 2336, 3)
+    results_see, results_com = [], []
+    accu_len = 0
+    for lid, le in enumerate(lengths):
+        cur_sent, targets = [], []
+        for idx in range(accu_len, accu_len + le):
+            x, y, w, h, rot = txt_data[idx]['x'], txt_data[idx]['y'], \
+                txt_data[idx]['width'], txt_data[idx]['height'], txt_data[idx]['rotation']
+            img_name = '/'.join([path_base, 'images', f'{lid}-{idx}.png'])
+            wrapped = extract_rotated_rectangle(image, x, y, w, h, rot)
+            cv2.imwrite(img_name, wrapped)
+            cur_sent.append([txt_data[idx]['text'][0], img_name])
+            if lab_data[idx]:
+                targets.append(idx - accu_len)
+        accu_len += le
+        print(''.join([item[0] for item in cur_sent]))
+        if len(targets) == 0:
+            continue
+        mask_chars = copy.deepcopy(cur_sent)
+        for target in targets:
+            chars = copy.deepcopy(cur_sent)
+            results_see.append(({
+                'book_name': 'H00137正',
+                'row_order': lid + 1,
+                'characters': chars,
+            }, target))
+            mask_chars[target][0] = '■'
+        for target in targets:
+            results_com.append(({
+                'book_name': 'H00137正',
+                'row_order': lid + 1,
+                'characters': mask_chars,
+            }, target))
+    save_json(results_see, 'handa/cases_H00137zheng_see.json')
+    save_json(results_com, 'handa/cases_H00137zheng_com.json')
+
+
 if __name__ == '__main__':
     # find_test_vague()
     # check_data()
@@ -462,7 +572,8 @@ if __name__ == '__main__':
     # main()
     # get_complete_data()
     # label_inverse()
-    find_bad_case('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/log_case_test_45_1648_cross_mk25.txt')
+    # find_bad_case('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/log_case_test_45_1648_cross_mk25.txt')
+    generate_case_file()
     exit()
     check_confusing_characters('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new'
                                '/log_case_test_45_1648_cross_mk25.txt')

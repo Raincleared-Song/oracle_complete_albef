@@ -39,7 +39,7 @@ def main():
     print('chosen metric:', chosen_line[args.metric], 'chosen_epoch:', chosen_line['epoch'],
           'last epoch:', int(checkpoints[-1][11:-4]))
 
-    if args.metric == 'valid_global_accuracy':
+    if args.metric == 'valid_global_accuracy' and not args.task.startswith('image_class'):
         hits = []
         for k in [1, 5, 10, 20]:
             hit = round(chosen_line[f'valid_global_hit_{k}'], 2)

@@ -38,6 +38,9 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     # train
     model.train()
 
+    f_case = open(os.path.join(config['output_path'], f'logs_train',
+                               f'log_case_train_{epoch}.txt'), 'w', encoding='utf-8')
+
     metric_logger = utils.MetricLogger(f_path=os.path.join(config['output_path'], "log_metric.txt"), delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
     metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
@@ -54,14 +57,14 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, labels, image_paths) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
 
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        total_loss, correct_num, instance_num = model(images, labels, 'train')
+        total_loss, predict_result, correct_num, instance_num = model(images, labels, 'train')
         total_loss.backward()
         optimizer.step()
 
@@ -69,6 +72,10 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(correct_num=correct_num)
         metric_logger.update(instance_num=instance_num)
+
+        assert len(labels) == len(predict_result) == len(image_paths)
+        for lab, res, image_p in zip(labels, predict_result, image_paths):
+            f_case.write(f'{lab}\t{int(res)}\t{image_p}\n')
 
         if epoch == 0 and i % step_size == 0 and i <= warmup_iterations:
             scheduler.step(i // step_size)
@@ -79,6 +86,8 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
     res['global_accuracy'] = round(100 * meters['correct_num'].total / meters['instance_num'].total, 2)
+
+    f_case.close()
 
     return res
 
@@ -112,6 +121,14 @@ def train(args, config, model, train_loader, test_loader=None):
         print('loading complete:', msg)
         print('load checkpoint from %s' % args.checkpoint)
         print('baseline accuracy ' + str(cur_max_global_acc))
+    elif args.pretrained_encoder != '':
+        pretrained = torch.load(args.pretrained_encoder, map_location='cpu')
+        state_dict = pretrained['model']
+        for key in [k for k in state_dict.keys() if not k.startswith('visual_encoder')]:
+            del state_dict[key]
+        msg = model.load_state_dict(state_dict, strict=False)
+        print('loading complete:', msg)
+        print('load visual encoder from %s' % args.pretrained_encoder)
 
     model_without_ddp = model
     if args.distributed:
@@ -187,6 +204,9 @@ def test_epoch(args, model, data_loader, epoch, device, config):
     model.eval()
     mod = 'valid' if args.mode == 'both' else 'test'
 
+    f_case = open(os.path.join(config['output_path'], f'logs_{mod}',
+                               f'log_case_{mod}_{epoch}.txt'), 'w', encoding='utf-8')
+
     metric_logger = utils.MetricLogger(
         f_path=os.path.join(config['output_path'], f"log_{mod}_metric.txt"), delimiter="  ")
     metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
@@ -201,16 +221,20 @@ def test_epoch(args, model, data_loader, epoch, device, config):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, labels) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, labels, image_paths) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        total_loss, correct_num, instance_num = model(images, labels, mod)
+        total_loss, predict_result, correct_num, instance_num = model(images, labels, mod)
 
         metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(correct_num=correct_num)
         metric_logger.update(instance_num=instance_num)
+
+        assert len(labels) == len(predict_result) == len(image_paths)
+        for lab, res, image_p in zip(labels, predict_result, image_paths):
+            f_case.write(f'{lab}\t{int(res)}\t{image_p}\n')
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -218,6 +242,8 @@ def test_epoch(args, model, data_loader, epoch, device, config):
     meters = metric_logger.meters
     res = {k: meter.metric_fmt.format(meter.default_metric) for k, meter in meters.items()}
     res['global_accuracy'] = round(100 * meters['correct_num'].total / meters['instance_num'].total, 2)
+
+    f_case.close()
 
     return res
 
@@ -285,7 +311,7 @@ def init_dataset(mode, config, distributed):
         return image_classification_collate_fn(batch)
 
     data_loader = create_loader(datasets, samplers, batch_size=[config['batch_size']],
-                                num_workers=[4], is_trains=[mode == 'train'], collate_fns=[collate_fn])[0]
+                                num_workers=[32], is_trains=[mode == 'train'], collate_fns=[collate_fn])[0]
     return data_loader
 
 
@@ -321,6 +347,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/Image_Classification.yaml')
     parser.add_argument('--checkpoint', default='')
+    parser.add_argument('--pretrained_encoder', default='')
     parser.add_argument('--resume', default=False, type=bool)
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=100, type=int)
@@ -329,12 +356,26 @@ if __name__ == '__main__':
     parser.add_argument('--distributed', default=False, type=bool)  # MODIFIED
     parser.add_argument('--mode', choices=['train', 'test', 'both'], required=True)
     parser.add_argument('--save_all', default=True, type=bool)
+    parser.add_argument('--test_files', help='multiple files seperated with \',\'', default='', type=str)
+    parser.add_argument('--do_trans', choices=['', 'true', 'false'], default='', type=str)
     main_args = parser.parse_args()
 
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
     main_config = yaml.load(open(main_args.config, 'r'), Loader=yaml.Loader)
+    if main_args.test_files != '':
+        main_config['test_file'] = main_args.test_files.split(',')
+    if main_args.do_trans != '':
+        main_config['img_random_transform'] = True if main_args.do_trans == 'true' else False
+
     Path(main_config['output_path']).mkdir(parents=True, exist_ok=True)
+    if main_args.mode in ['train', 'both']:
+        os.makedirs(os.path.join(main_config['output_path'], 'logs_train'), exist_ok=True)
+    if main_args.mode == 'both':
+        os.makedirs(os.path.join(main_config['output_path'], 'logs_valid'), exist_ok=True)
+    elif main_args.mode == 'test':
+        os.makedirs(os.path.join(main_config['output_path'], 'logs_test'), exist_ok=True)
+
     yaml.dump(main_config, open(os.path.join(main_config['output_path'], 'config.yaml'), 'w'))
 
     main(main_args, main_config)

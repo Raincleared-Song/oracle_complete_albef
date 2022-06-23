@@ -6,12 +6,15 @@ from PIL import Image
 from torchvision import transforms
 
 
-def random_transform(image: Image.Image, do_trans: bool, pad_color=0, mask_ratio=0.0, noise_ratio=0.25) -> np.ndarray:
+def random_transform(image: Image.Image, do_trans: bool, reverse=False,
+                     pad_color=0, mask_ratio=0.0, noise_ratio=0.25) -> np.ndarray:
     """
     Image, cv2 <-> array: (height, width, dim)
     随机变换：[0, erase * 4] * [0, rot90, rot180, rot270] (在外面做) * [0, 25% noise, 50% noise, 75% noise]
     """
     image = np.array(image)
+    if reverse:
+        image = 255 - image
     if not do_trans:
         return image
     # 覆盖变换
@@ -115,7 +118,7 @@ def add_random_noise(image: np.ndarray, ratio=0.25, noise_color=255) -> np.ndarr
     return noise_image
 
 
-def resize_pad_image(image: Image.Image, shape: tuple, do_trans: bool,
+def resize_pad_image(image: Image.Image, shape: tuple, do_trans: bool, reverse=False,
                      pad_color=0, mask_ratio=0.0, noise_ratio=0.25, do_rotate=False) -> np.ndarray:
     # resize
     width, height = image.size
@@ -133,12 +136,12 @@ def resize_pad_image(image: Image.Image, shape: tuple, do_trans: bool,
     if image.mode == 'L':
         pad_image = np.full((r_height, r_width), pad_color, dtype=np.uint8)
         pad_image[pad_h:pad_h + height, pad_w:pad_w + width] = random_transform(
-            image, do_trans, pad_color=pad_color, mask_ratio=mask_ratio, noise_ratio=noise_ratio)
+            image, do_trans, reverse=reverse, pad_color=pad_color, mask_ratio=mask_ratio, noise_ratio=noise_ratio)
     else:
         # padding to shape, dtype required
         pad_image = np.full((r_height, r_width, 3), pad_color, dtype=np.uint8)
         pad_image[pad_h:pad_h+height, pad_w:pad_w+width, :] = random_transform(
-            image, do_trans, pad_color=pad_color, mask_ratio=mask_ratio, noise_ratio=noise_ratio)
+            image, do_trans, reverse=reverse, pad_color=pad_color, mask_ratio=mask_ratio, noise_ratio=noise_ratio)
     if do_trans and do_rotate:
         pad_image = random_rotate(pad_image)
     return pad_image

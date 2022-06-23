@@ -9,16 +9,14 @@ from dataset.data_utils import resize_pad_image
 class ImageClassificationDataset(Dataset):
 
     src_to_idx = {'wzb': 0, 'chant': 1}
-    idx_to_dir = ['/home/linbiyuan/corpus/wenbian/labels_页数+序号+著录号+字形_校对版_060616/char',
-                  '/data/private/songchenyang/hanzi_filter/handa']
-    src_to_pad_color = [255, 0]
+    idx_to_dir = ['../hanzi_filter/wzb', '../hanzi_filter/handa']
 
     def __init__(self, config, mode):
         file_list = config['train_file'] if mode == 'train' else config['test_file']
         self.data = []
         for file in file_list:
             part = load_json(os.path.join(config['data_prefix'], file))
-            for key, val in part.items():
+            for val in part:
                 self.data += val
         print(f'loaded {mode} data: {len(self.data)}')
         assert config['dataset_mode'] == 'classification'
@@ -47,14 +45,14 @@ class ImageClassificationDataset(Dataset):
     def __getitem__(self, index):
         char, config = self.data[index], self.config
         img_res = config['image_res']
-        image, label, src = char['img'], char['lab'], char['src']
+        image_p, label, src = char['img'], char['lab'], char['src']
+        assert 0 <= label < config['vocab_size']
         src = ImageClassificationDataset.src_to_idx[src]
-        image = os.path.join(ImageClassificationDataset.idx_to_dir[src], image)
-        image = Image.open(image).convert(config['img_mode'])
-        pad_color = ImageClassificationDataset.src_to_pad_color[src]
+        image_p = os.path.join(ImageClassificationDataset.idx_to_dir[src], image_p)
+        image = Image.open(image_p).convert(config['img_mode'])
         image = resize_pad_image(image, (img_res, img_res), do_trans=config['img_random_transform'],
-                                 pad_color=pad_color, mask_ratio=config['img_mask_ratio'],
+                                 reverse=(src == 'wzb'), pad_color=0, mask_ratio=config['img_mask_ratio'],
                                  noise_ratio=config['img_noise_ratio'], do_rotate=config['img_do_rotate'])
         image = Image.fromarray(image, mode=config['img_mode'])
         image = self.transform(image).unsqueeze(0)
-        return image, label
+        return image, label, image_p

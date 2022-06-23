@@ -167,11 +167,12 @@ def image_reconstruct_collate_fn(batch, img_pad_color=1.0):
 
 
 def image_classification_collate_fn(batch):
-    images, labels = [], []
-    for image, label in batch:
+    images, labels, image_paths = [], [], []
+    for image, label, image_p in batch:
         images.append(image)
         labels.append(label)
-    return torch.cat(images, dim=0), torch.LongTensor(labels)
+        image_paths.append(image_p)
+    return torch.cat(images, dim=0), torch.LongTensor(labels), image_paths
 
 
 def create_sampler(datasets, shuffles, num_tasks, global_rank):

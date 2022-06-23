@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from functools import partial
+import torchvision.models as vision_models
 from models.vit import interpolate_pos_embed, VisionTransformer
 
 
@@ -36,6 +37,15 @@ class ImageClassification(nn.Module):
                 state_dict['pos_embed'] = pos_embed_reshaped
                 msg = self.visual_encoder.load_state_dict(state_dict, strict=False)
                 print('ViT Initialization:', msg)
+        elif config['visual_encoder'].startswith('resnet'):
+            self.visual_encoder = {
+                'resnet18':  vision_models.resnet18,
+                'resnet50':  vision_models.resnet50,
+                'resnet101': vision_models.resnet101,
+            }[config['visual_encoder']](pretrained=True)
+            dim_mlp = self.visual_encoder.fc.in_features
+            self.visual_encoder.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, 768))
+            print(f'{config["visual_encoder"]} Initialization ......')
         else:
             raise ValueError('Invalid Visual Encoder!')
 
@@ -57,14 +67,15 @@ class ImageClassification(nn.Module):
         loss_cls = self.classification_loss(predict_embeds, labels)
         with torch.no_grad():
             predict_result_ids = torch.max(predict_embeds, dim=1)[1]
-            correct_num = torch.sum(torch.logical_and(labels, predict_result_ids == labels)).item()
+            predict_result = predict_result_ids == labels
+            correct_num = torch.sum(torch.logical_and(labels, predict_result)).item()
         assert correct_num <= instance_num
-        return loss_cls, correct_num, instance_num
+        return loss_cls, predict_result, correct_num, instance_num
 
     def forward(self, images, labels, mode):
         assert mode in ['train', 'valid', 'test']
 
         input_embeds = self.forward_encoder(images)
-        loss_cls, correct_num, instance_num = self.forward_classification(input_embeds, labels)
+        loss_cls, predict_result, correct_num, instance_num = self.forward_classification(input_embeds, labels)
 
-        return loss_cls, correct_num, instance_num
+        return loss_cls, predict_result, correct_num, instance_num

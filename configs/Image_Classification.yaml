@@ -1,9 +1,9 @@
-train_file: ['orcal/oracle_classification_combine_train.json']
-test_file: ['orcal/oracle_classification_combine_valid.json']
-#test_file: ['orcal/oracle_classification_combine_test.json']
-data_prefix: '/data/private/songchenyang/simclr'
+train_file: ['orcal/oracle_classification_chant_train.json']
+test_file: ['orcal/oracle_classification_chant_valid.json']
+#test_file: ['orcal/oracle_classification_chant_test.json']
+data_prefix: '../simclr'
 model: 'ImageClassification'
-output_path: 'output/image_class_vit_base'
+output_path: 'output/image_class_chant_resnet101_base_second'
 
 image_res: 128
 batch_size: 64
@@ -17,9 +17,8 @@ img_do_rotate: false
 pad_color: 0
 vocab_size: 6996
 
-visual_encoder: 'vit'
+visual_encoder: 'resnet101'
 encoder_layer: 12
 
 optimizer: {opt: adamW, lr: 1e-4, weight_decay: 0.02}
-schedular: {sched: cosine, lr: 1e-4, epochs: 90, min_lr: 1e-4, decay_rate: 1, warmup_lr: 1e-4, warmup_epochs: 20, cooldown_epochs: 0}
-
+schedular: {sched: cosine, lr: 1e-4, epochs: 60, min_lr: 1e-4, decay_rate: 1, warmup_lr: 1e-4, warmup_epochs: 20, cooldown_epochs: 0}

@@ -1,0 +1,23 @@
+1. image_class_vit_base
+data: 80% for train
+trans: 0.25 mask, -1 noise
+chosen metric: 72.99 chosen_epoch: 14
+test result: trans, 72.91 / no_trans, 84.64
+
+2. image_class_vit_base90
+data: 90% for train
+trans: 0.25 mask, -1 noise
+chosen metric: 73.98 chosen_epoch: 17
+test result: trans, 73.46 / no_trans, 84.75
+
+3. image_class_vit_base_notrans
+data: 80% for train
+trans: none
+chosen metric: 82.63 chosen_epoch: 3
+test result: no_trans, 82.59
+
+4. image_class_vit_base_notrans90
+data: 90% for train
+trans: none
+chosen metric: 83.09 chosen_epoch: 3
+test result: no_trans, 82.88
