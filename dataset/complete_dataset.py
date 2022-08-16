@@ -259,11 +259,15 @@ class OracleCompleteSingleDataset(Dataset):
 
         targets = input_ids.clone()
         targets[~masked_indices] = -100  # We only compute loss on masked tokens
+        plain_targets = input_ids.clone()
+        plain_targets[input_ids == self.tokenizer.pad_token_id] = -100
+        plain_targets[input_ids == self.tokenizer.cls_token_id] = -100
+        plain_targets[input_ids == self.tokenizer.sep_token_id] = -100
 
         # 100% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
         input_ids[masked_indices] = self.tokenizer.mask_token_id
 
-        return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
+        return input_ids, targets, plain_targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def mask_by_id(self, input_ids, mask_id):
         masked_indices = torch.full(input_ids.shape, False)
@@ -274,11 +278,15 @@ class OracleCompleteSingleDataset(Dataset):
 
         targets = input_ids.clone()
         targets[~masked_indices] = -100  # We only compute loss on masked tokens
+        plain_targets = input_ids.clone()
+        plain_targets[input_ids == self.tokenizer.pad_token_id] = -100
+        plain_targets[input_ids == self.tokenizer.cls_token_id] = -100
+        plain_targets[input_ids == self.tokenizer.sep_token_id] = -100
 
         # 100% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
         input_ids[masked_indices] = self.tokenizer.mask_token_id
 
-        return input_ids, targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
+        return input_ids, targets, plain_targets, masked_indices.tolist()[1:-1], mask_id, mask_ch
 
     def get_input_images(self, image_ls, masked_indices):
         assert self.config['img_mask_policy'] in ['single', 'neighbour', 'all']
@@ -321,9 +329,9 @@ class OracleCompleteSingleDataset(Dataset):
             image_ls, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
-                input_ids, targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
+                input_ids, targets, plain_targets, masked_indices, mask_id, mask_ch = self.random_mask(input_ids)
                 masked_id, images, mask_ori_img = self.get_input_images(image_ls, masked_indices)
-                return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
+                return images, input_ids, targets, plain_targets, identity, mask_id, mask_ch, mask_ori_img
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
                 return images, input_ids, identity
@@ -335,9 +343,9 @@ class OracleCompleteSingleDataset(Dataset):
             image_ls, tokens = process_single_complete(book, self.config)
             input_ids = torch.LongTensor(self.convert_tokens_to_ids(tokens))
             if self.add_mask:
-                input_ids, targets, masked_indices, mask_id, mask_ch = self.mask_by_id(input_ids, mid + 1)
+                input_ids, targets, plain_targets, masked_indices, mask_id, mask_ch = self.mask_by_id(input_ids, mid+1)
                 masked_id, images, mask_ori_img = self.get_input_images(image_ls, masked_indices)
-                return images, input_ids, targets, identity, mask_id, mask_ch, mask_ori_img
+                return images, input_ids, targets, plain_targets, identity, mask_id, mask_ch, mask_ori_img
             else:
                 images = torch.cat([self.transform(img[0]).view(-1).unsqueeze(0) for img in image_ls], dim=0)
                 return images, input_ids, identity

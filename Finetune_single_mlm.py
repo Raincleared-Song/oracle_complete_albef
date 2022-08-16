@@ -49,6 +49,8 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_plain', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_tra_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('correct_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
@@ -70,8 +72,9 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids,
-            mask_img_ids, mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, mask_ori_images, input_ids, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths,
+            book_orders, mask_ids, mask_img_ids, mask_chs) \
+            in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
 
@@ -80,14 +83,15 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         input_ids = input_ids.to(device, non_blocking=True)
         attn_masks = attn_masks.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
+        plain_labels = plain_labels.to(device, non_blocking=True)
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
         mask_ids = mask_ids.to(device, non_blocking=True)
         mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
-        total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
-            rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
-            model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+        total_loss, loss_mlm, loss_rec, loss_plain, loss_tra_mlm, correct_num, instance_num, ori_inputs, \
+            correct_chars, wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
+            model(images, mask_ori_images, input_ids, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, 'train')
 
         total_loss.backward()
@@ -97,6 +101,8 @@ def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device
         metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(loss_rec=loss_rec.item())
+        metric_logger.update(loss_plain=loss_plain.item())
+        metric_logger.update(loss_tra_mlm=loss_tra_mlm.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
         update_map = {}
@@ -201,6 +207,10 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             text_null_dict = {}
             for key, val in model.text_encoder.state_dict().items():
                 text_null_dict['text_encoder.' + key] = val
+            # initialize MLP normally
+            if hasattr(model, 'middle_mlp'):
+                for key, val in model.middle_mlp.state_dict().items():
+                    text_null_dict['middle_mlp.' + key] = val
             total_dict.update(text_null_dict)
         model.load_state_dict(total_dict)
 
@@ -288,6 +298,8 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     metric_logger.add_meter('total_loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_rec', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_plain', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_tra_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('correct_num', utils.SmoothedValue(
         window_size=50, fmt='{value:03}', metric='global_total', metric_fmt='{:06}'))
     metric_logger.add_meter('instance_num', utils.SmoothedValue(
@@ -307,27 +319,31 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     if args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
-    for i, (images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths, book_orders, mask_ids,
-            mask_img_ids, mask_chs) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i, (images, mask_ori_images, input_ids, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths,
+            book_orders, mask_ids, mask_img_ids, mask_chs) \
+            in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         images = images.to(device, non_blocking=True)
         mask_ori_images = mask_ori_images.to(device, non_blocking=True)
         input_ids = input_ids.to(device, non_blocking=True)
         attn_masks = attn_masks.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
+        plain_labels = plain_labels.to(device, non_blocking=True)
         pos_ids = pos_ids.to(device, non_blocking=True)
         type_ids = type_ids.to(device, non_blocking=True)
         mask_ids = mask_ids.to(device, non_blocking=True)
         mask_img_ids = mask_img_ids.to(device, non_blocking=True)
 
-        total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_inputs, correct_chars, wrong_chars, \
-            rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
-            model(images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+        total_loss, loss_mlm, loss_rec, loss_plain, loss_tra_mlm, correct_num, instance_num, ori_inputs, \
+            correct_chars, wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores = \
+            model(images, mask_ori_images, input_ids, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths,
                   mask_ids, mask_img_ids, mask_chs, mod)
 
         metric_logger.update(total_loss=total_loss.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(loss_rec=loss_rec.item())
+        metric_logger.update(loss_plain=loss_plain.item())
+        metric_logger.update(loss_tra_mlm=loss_tra_mlm.item())
         metric_logger.update(correct_num=int(correct_num))
         metric_logger.update(instance_num=int(instance_num))
         update_map = {}
@@ -389,15 +405,9 @@ def test(args, config, model, data_loader, tokenizer=None):
         model_list = [args.checkpoint]
 
     for cp_path in model_list:
-
-        cp_base_path = os.path.basename(cp_path)
-        pos = cp_base_path.find('_')
-        assert pos >= 0
-        epoch = int(cp_base_path[(pos + 1):(pos + 3)])
-
         # test every checkpoint
         checkpoint = torch.load(cp_path, map_location='cpu')
-        state_dict = checkpoint['model']
+        state_dict, epoch = checkpoint['model'], checkpoint['epoch']
         inner_model = model.module if hasattr(model, 'module') else model
         if 'visual_encoder.pos_embed' in state_dict:
             pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'], model.visual_encoder)
@@ -483,9 +493,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/Finetune_single_mlm.yaml')
     parser.add_argument('--checkpoint', default='')
-    parser.add_argument('--resume', default=False, type=bool)
+    parser.add_argument('--resume', help='resume training', action='store_true')
     parser.add_argument('--text_encoder', default='')  # MODIFIED
-    parser.add_argument('--text_tokenizer', default='../guwenbert-base')  # MODIFIED
+    parser.add_argument('--text_tokenizer', default='../chinese-bert-wwm-ext')  # MODIFIED
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=100, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')

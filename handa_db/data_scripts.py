@@ -564,6 +564,58 @@ def generate_case_file():
     save_json(results_com, 'handa/cases_H00137zheng_com.json')
 
 
+def generate_new_embedding():
+    import torch
+    import opencc
+    import torch.nn as nn
+
+    old_char_to_id = load_json('../chinese-bert-wwm-ext/vocab_old.json')
+    converter = opencc.OpenCC('t2s.json')
+    old_vocab_size, new_vocab_size, hidden_size, pad_token_id = 21128, 4116, 768, 0
+    assert old_vocab_size == len(old_char_to_id)
+    with open('../chinese-bert-wwm-ext/vocab.txt', 'r', encoding='utf-8') as fin:
+        exist_vocab_list = [line[:-1] for line in fin.readlines() if len(line) > 1]
+    assert len(exist_vocab_list) == new_vocab_size
+
+    main_keys = {
+        'bert.embeddings.word_embeddings.weight': nn.Embedding(
+            new_vocab_size, hidden_size, padding_idx=pad_token_id).weight.detach(),
+        'cls.predictions.bias': torch.zeros(new_vocab_size),
+        'cls.predictions.decoder.weight': nn.Linear(hidden_size, new_vocab_size, bias=False).weight.detach(),
+    }
+    state_dict = torch.load('../chinese-bert-wwm-ext/pytorch_model_old.bin')
+
+    for idx, char in tqdm(enumerate(exist_vocab_list)):
+        update_cnt = -1
+        for key, val in main_keys.items():
+            if val.ndim == 2:
+                new_vec = torch.zeros(hidden_size, dtype=val.dtype)
+            else:
+                new_vec = torch.tensor(0, dtype=val.dtype)
+            cur_cnt = 0
+            if idx >= 113:
+                for ch in char:
+                    if ch in old_char_to_id:
+                        new_vec += state_dict[key][old_char_to_id[ch]]
+                        cur_cnt += 1
+                for ch in converter.convert(char):
+                    if ch in old_char_to_id:
+                        new_vec += state_dict[key][old_char_to_id[ch]]
+                        cur_cnt += 1
+            else:
+                if char in old_char_to_id:
+                    new_vec += state_dict[key][old_char_to_id[char]]
+                    cur_cnt += 1
+            if cur_cnt > 0:
+                val[idx] = new_vec / cur_cnt
+            if update_cnt < 0:
+                update_cnt = cur_cnt
+            assert update_cnt == cur_cnt
+    for key, val in main_keys.items():
+        state_dict[key] = val
+    torch.save(state_dict, '../chinese-bert-wwm-ext/pytorch_model.bin')
+
+
 if __name__ == '__main__':
     # find_test_vague()
     # check_data()
@@ -573,7 +625,8 @@ if __name__ == '__main__':
     # get_complete_data()
     # label_inverse()
     # find_bad_case('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/log_case_test_45_1648_cross_mk25.txt')
-    generate_case_file()
+    generate_new_embedding()
+    # generate_case_file()
     exit()
     check_confusing_characters('output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new'
                                '/log_case_test_45_1648_cross_mk25.txt')

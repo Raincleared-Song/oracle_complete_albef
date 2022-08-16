@@ -32,6 +32,10 @@ python Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text
 
 srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
   --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
+  --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
+srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '../chinese-bert-wwm-ext' --mode both --save_all=true --load_cross \
+  --image_checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 
 srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finetune_single_mlm.yaml --text_encoder '' --mode both --save_all=true --load_cross \
   --text_checkpoint output/tra_finetune_single_mlm_p0_text_all/checkpoint_15.pth \
@@ -76,11 +80,11 @@ srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Imag
 srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Image_Classification.yaml --mode both --save_all=true \
   --pretrained_encoder output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/checkpoint_45.pth
 
-python3 Image_Classification.py --config ./output/image_class_vit_base/config.yaml --mode test \
-  --checkpoint output/image_class_vit_base/checkpoint_14.pth \
-  --test_files orcal/oracle_classification_combine_test.json --do_trans false
+python3 Image_Classification.py --config ./output/image_class_chant_resnet152_base/config.yaml --mode test \
+  --checkpoint output/image_class_chant_resnet152_base/checkpoint_16.pth \
+  --test_files orcal/oracle_classification_chant_test.json --do_trans false
 
-python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/config.yaml \
-  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/checkpoint_45.pth --mode test \
+python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm/config.yaml \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm/checkpoint_36.pth --mode test \
   --test_files handa/cases_H00137zheng_see.json --do_trans false
 

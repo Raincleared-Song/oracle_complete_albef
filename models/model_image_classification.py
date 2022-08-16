@@ -42,6 +42,7 @@ class ImageClassification(nn.Module):
                 'resnet18':  vision_models.resnet18,
                 'resnet50':  vision_models.resnet50,
                 'resnet101': vision_models.resnet101,
+                'resnet152': vision_models.resnet152,
             }[config['visual_encoder']](pretrained=True)
             dim_mlp = self.visual_encoder.fc.in_features
             self.visual_encoder.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), nn.Linear(dim_mlp, 768))

@@ -1,7 +1,8 @@
 import torch
+import random
 import torch.nn as nn
 from functools import partial
-from transformers import RobertaConfig, RobertaForMaskedLM
+from transformers import BertConfig, BertForMaskedLM
 from models.vit import interpolate_pos_embed, VisionTransformer, Block
 
 
@@ -13,13 +14,13 @@ class SingleMlm(nn.Module):
         super().__init__()
 
         self.tokenizer = tokenizer
-        roberta_config = RobertaConfig.from_json_file(config['bert_config'])
+        bert_config = BertConfig.from_json_file(config['bert_config'])
         self.distributed = distributed
         self.modality = config['modality'] if 'modality' in config else 'cross'
         if text_encoder:
-            self.text_encoder = RobertaForMaskedLM.from_pretrained(text_encoder, config=roberta_config)
+            self.text_encoder = BertForMaskedLM.from_pretrained(text_encoder, config=bert_config)
         else:
-            self.text_encoder = RobertaForMaskedLM(config=roberta_config)
+            self.text_encoder = BertForMaskedLM(config=bert_config)
         if 'topk' in config:
             assert config['mlm_probability'] <= 0
             self.topk = config['topk']
@@ -65,6 +66,19 @@ class SingleMlm(nn.Module):
             self.reconstruct_loss = nn.MSELoss()
 
         self.config = config
+        self.plain_loss = nn.CrossEntropyLoss()
+        self.predict_all = 'predict_all' in self.config and self.config['predict_all']
+        self.extra_mlp = 'extra_mlp' in self.config and self.config['extra_mlp']
+        if self.extra_mlp:
+            modules, dims = [], self.config['mlp_dim']
+            assert len(dims) >= 2
+            for idx in range(0, len(dims) - 1):
+                modules.append(nn.Linear(dims[idx], dims[idx + 1]))
+                modules.append(nn.ReLU())
+            self.middle_mlp = nn.Sequential(*modules)
+        self.tradition_mlm = 'tradition_mlm' in self.config and self.config['tradition_mlm']
+        if self.tradition_mlm and self.modality != 'image':
+            raise NotImplementedError('tradition_mlm only for image modality')
         # self.rec_idx = 0
 
     def forward_encoder(self, images):
@@ -92,7 +106,56 @@ class SingleMlm(nn.Module):
         #     exit()
         return embeds, loss
 
-    def forward(self, images, mask_ori_images, input_ids, attn_masks, labels, pos_ids, type_ids, lengths,
+    def seq_expand(self, to_expand: torch.Tensor, lengths: list, cls_value) -> torch.Tensor:
+        if self.modality != 'image':
+            raise NotImplementedError('seq_expand only for image modality')
+        batch_sz, seq_len = to_expand.shape
+        assert batch_sz == len(lengths)
+        to_expand_ls = to_expand.cpu().tolist()
+        expanded_rows = []
+        for row_idx, (row_len, row_pad) in enumerate(lengths):
+            assert row_len + row_pad == seq_len
+            expand_row = to_expand_ls[row_idx]
+            if cls_value >= 0:
+                expand_row = [cls_value] + expand_row[:row_len] + [cls_value] + expand_row[row_len:]
+            elif cls_value == -1:
+                # sequential encoding
+                expand_row = [expand_row[0]-1] + expand_row[:row_len] + [expand_row[row_len-1]+1] + expand_row[row_len:]
+            elif cls_value == -2:
+                # cls + sep
+                expand_row = [self.tokenizer.cls_token_id] + expand_row[:row_len] + \
+                             [self.tokenizer.sep_token_id] + expand_row[row_len:]
+            else:
+                raise NotImplementedError('invalid cls_value: ' + str(cls_value))
+            expanded_rows.append(expand_row)
+        expanded_rows = torch.tensor(expanded_rows, dtype=to_expand.dtype, device=to_expand.device)
+        return expanded_rows
+
+    def forward_traditional_mlm(self, plain_labels, attn_masks, pos_ids, type_ids, lengths):
+        if self.modality != 'image':
+            raise NotImplementedError('seq_expand only for image modality')
+        # random mask
+        tra_input_ids = self.seq_expand(plain_labels, lengths, cls_value=-2)
+        tra_input_ids[tra_input_ids == -100] = self.tokenizer.pad_token_id
+        tra_labels = tra_input_ids.clone()
+        for bid, (text_len, _) in enumerate(lengths):
+            mask_id = random.randint(1, text_len)
+            assert tra_input_ids[bid, mask_id] not in [self.tokenizer.pad_token_id,
+                                                       self.tokenizer.cls_token_id, self.tokenizer.sep_token_id]
+            tra_input_ids[bid, mask_id] = self.tokenizer.mask_token_id
+        tra_labels[tra_input_ids != self.tokenizer.mask_token_id] = -100
+        tra_mlm_output = self.text_encoder(
+            input_ids=tra_input_ids,
+            attention_mask=self.seq_expand(attn_masks, lengths, 1.0),
+            token_type_ids=self.seq_expand(type_ids, lengths, 1),
+            position_ids=self.seq_expand(pos_ids, lengths, -1),
+            labels=tra_labels,
+            return_dict=True,
+            output_hidden_states=True,
+        )
+        return tra_mlm_output.loss
+
+    def forward(self, images, mask_ori_images, input_ids, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths,
                 mask_ids, mask_img_ids, mask_chs, mode):
         """
         input_ids: [batch_size, 1+n1+1+n2]
@@ -102,14 +165,17 @@ class SingleMlm(nn.Module):
 
         if self.modality == 'cross':
             # word embedding
-            word_embed = self.text_encoder.roberta.embeddings.word_embeddings(input_ids)  # (batch, 1+n1+1+n2, 768)
+            word_embed = self.text_encoder.bert.embeddings.word_embeddings(input_ids)  # (batch, 1+n1+1+n2, 768)
             visual_embed = self.forward_encoder(images)  # (batch, n1+n2, 768)
             assert word_embed.shape[1] == visual_embed.shape[1] + 2
             input_embeds = torch.cat((word_embed, visual_embed), dim=1)
         elif self.modality == 'text':
-            input_embeds = self.text_encoder.roberta.embeddings.word_embeddings(input_ids)
+            input_embeds = self.text_encoder.bert.embeddings.word_embeddings(input_ids)
         else:
             input_embeds = self.forward_encoder(images)
+
+        if self.extra_mlp:
+            input_embeds = self.middle_mlp(input_embeds)
 
         mlm_output = self.text_encoder(
             input_ids=None,
@@ -122,7 +188,18 @@ class SingleMlm(nn.Module):
             output_hidden_states=True,
         )
 
-        loss_mlm, loss_rec = mlm_output.loss, torch.tensor(0.0).to(mlm_output.loss)
+        loss_mlm, loss_rec, loss_plain, loss_tra_mlm = mlm_output.loss, torch.tensor(0.0).to(mlm_output.loss), \
+            torch.tensor(0.0).to(mlm_output.loss), torch.tensor(0.0).to(mlm_output.loss)
+
+        # all_loss
+        if self.predict_all:
+            predict_scores = mlm_output.logits
+            batch_sz, seq_len, vocab_sz = predict_scores.shape
+            predict_scores = predict_scores.view(batch_sz * seq_len, vocab_sz)
+            loss_plain = self.plain_loss(predict_scores, plain_labels.flatten())
+
+        if self.tradition_mlm:
+            loss_tra_mlm = self.forward_traditional_mlm(plain_labels, attn_masks, pos_ids, type_ids, lengths)
 
         batch_sz = len(lengths)
         if self.config['image_reconstruct_factor'] > 0:
@@ -176,5 +253,10 @@ class SingleMlm(nn.Module):
                 hit_correct[k] = local_correct
 
         total_loss = loss_mlm + loss_rec * self.config['image_reconstruct_factor']
-        return total_loss, loss_mlm, loss_rec, correct_num, instance_num, ori_input_ids.tolist(), correct_chars, \
-            wrong_chars, rank_correct_num, rank_instance_num, hit_correct, topk_ids, topk_scores
+        if self.predict_all:
+            total_loss += loss_plain / (self.config['target_weight'] - 1.0)
+        if self.tradition_mlm:
+            total_loss += loss_tra_mlm * self.config['tradition_mlm_weight']
+        return total_loss, loss_mlm, loss_rec, loss_plain, loss_tra_mlm, correct_num, instance_num, \
+            ori_input_ids.tolist(), correct_chars, wrong_chars, rank_correct_num, \
+            rank_instance_num, hit_correct, topk_ids, topk_scores

@@ -254,6 +254,61 @@ def dump_data_new():
     save_json([key + (val,) for key, val in char_font_index_to_id.items()], 'output/char_font_index_to_id.json')
 
 
+def generate_new_vocab():
+    with open('../chinese-bert-wwm-ext/vocab_old.txt', 'r', encoding='utf-8') as fin:
+        exist_vocab_list = [line[:-1] for line in fin.readlines() if len(line) > 1]
+        special_tokens = exist_vocab_list[:106]
+
+    print("loading vocab from database ......")
+    character_set = set()
+    characters = Character.select(Character.standard_liding_character)
+    for ch in characters:
+        ch = ch.standard_liding_character
+        if ch is not None and ch != "":
+            character_set.add(ch)
+    print(len(character_set))
+
+    complete_data = load_json('../hanzi_filter/handa/data_complete.json')
+    for book in complete_data:
+        for ch, img in book['characters']:
+            assert not ch.startswith('【'), ch
+            if ch not in character_set:
+                character_set.add(ch)
+    mid_combine = load_json('../hanzi_filter/handa/cases_com_tra_mid_combine.json')
+    for book, mid in mid_combine:
+        for ch, img in book['characters']:
+            assert not ch.startswith('【'), ch
+            if ch not in character_set:
+                character_set.add(ch)
+
+    sim_data = load_json('../hanzi_filter/handa/data_complete_tra_train.json') + \
+        load_json('../hanzi_filter/handa/data_complete_tra_test.json')
+    for book in sim_data:
+        for ch, img in book['characters']:
+            assert not ch.startswith('【'), ch
+            assert ch in character_set
+
+    char_base = '/home/linbiyuan/corpus/wenbian/labels_页数+序号+著录号+字形_校对版_060616/char'
+    print('loading from char_base:', char_base)
+    png_list = sorted(os.listdir(char_base))
+    for img in tqdm(png_list, desc='images'):
+        assert img.startswith("甲骨文字編-") and img.endswith(".png")
+        img = img[6:-4]
+        _, page, ch_idx, char, sub_idx, book_age = img.split('_')
+        character_set.add(char)
+
+    character_set -= set(special_tokens)
+    character_list = special_tokens + sorted(list(character_set))
+    character_list = [ch for ch in character_list if not ch.startswith('【')]
+    print(len(character_list))  # 5128 -> 4116 (no【)
+    with open('../chinese-bert-wwm-ext/vocab.txt', 'w', encoding='utf-8') as fout:
+        for ch in character_list:
+            assert ch
+            fout.write(ch + '\n')
+        print(len(character_list))
+
+
 if __name__ == '__main__':
     init_db()
     dump_data_new()
+    # generate_new_vocab()

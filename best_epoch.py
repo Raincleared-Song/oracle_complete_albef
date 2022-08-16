@@ -46,7 +46,7 @@ def main():
             hits.append(f'{hit:.2f}')
         print(' / '.join(hits))
 
-    best_epoch, last_epoch = chosen_line['epoch'], int(checkpoints[-1][-6:-4])
+    best_epoch, last_epoch = chosen_line['epoch'], int(checkpoints[-1][11:-4])
     if args.remove:
         os.system(f'mv output/{args.task}/checkpoint_{best_epoch:02}.pth output/')
         if last_epoch != best_epoch:

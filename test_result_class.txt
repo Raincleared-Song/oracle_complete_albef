@@ -21,3 +21,51 @@ data: 90% for train
 trans: none
 chosen metric: 83.09 chosen_epoch: 3
 test result: no_trans, 82.88
+
+5. image_class_chant_vit_base
+data: 80% for train, chant base
+trans: 0.25 mask, -1 noise
+chosen metric: 73.54 chosen_epoch: 18
+test result: no_trans, 84.8
+
+6. image_class_chant_vit_base90
+data: 90% for train, chant base
+trans: 0.25 mask, -1 noise
+chosen metric: 74.15 chosen_epoch: 12
+test result: no_trans, 85.72
+
+7. image_class_chant_vit_base_first
+data: 80% for train, chant base, first checkpoint
+trans: 0.25 mask, -1 noise
+chosen metric: 78.82 chosen_epoch: 2
+test result: no_trans, 90.78
+
+8. image_class_chant_vit_base_second
+data: 80% for train, chant base, second checkpoint
+trans: 0.25 mask, -1 noise
+chosen metric: 78.76 chosen_epoch: 2
+test result: no_trans, 90.82
+
+9. image_class_chant_resnet50_base
+data: 80% for train, chant base, resnet50
+trans: 0.25 mask, -1 noise
+chosen metric: 75.48 chosen_epoch: 17
+test result: no_trans, 84.46
+
+10. image_class_chant_resnet18_base
+data: 80% for train, chant base, resnet18
+trans: 0.25 mask, -1 noise
+chosen metric: 73.08 chosen_epoch: 17
+test result: no_trans, 82.8
+
+11. image_class_chant_resnet101_base
+data: 80% for train, chant base, resnet101
+trans: 0.25 mask, -1 noise
+chosen metric: 75.5 chosen_epoch: 18
+test result: no_trans, 84.56
+
+12. image_class_chant_resnet152_base
+data: 80% for train, chant base, resnet152
+trans: 0.25 mask, -1 noise
+chosen metric: 76.01 chosen_epoch: 16
+test result: no_trans, 85.08

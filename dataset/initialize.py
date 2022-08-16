@@ -83,12 +83,13 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
     [CLS], text tokens * n1, [SEP], [PAD] * n2, image embeds * n1, [IMG_PAD] * n2
     return: image_matrix with padding, input_ids with cls+seq+padding, attn_mask (both), labels (both)
     """
-    images, sentences, attn_masks, labels, pos_ids, type_ids, lengths, book_orders = [], [], [], [], [], [], [], []
+    images, sentences, attn_masks, labels, plain_labels, pos_ids, type_ids, lengths, book_orders = \
+        [], [], [], [], [], [], [], [], []
     mask_ids, mask_chs, mask_img_ids, mask_ori_images = [], [], [], []
     # longest value n1
-    max_len = max(len(img) for img, _, _, _, _, _, _ in batch)
-    for img, input_ids, label, book_order, mask_id, mask_ch, mask_ori_img in batch:
-        assert len(img) + 2 == len(input_ids) == len(label)
+    max_len = max(len(img) for img, _, _, _, _, _, _, _ in batch)
+    for img, input_ids, label, plain_label, book_order, mask_id, mask_ch, mask_ori_img in batch:
+        assert len(img) + 2 == len(input_ids) == len(label) == len(plain_label)
         book_orders.append(book_order)
         mask_chs.append(mask_ch)
         n1, n2 = len(img), max_len - len(img)
@@ -110,14 +111,18 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
         if modality == 'cross':
             # [batch_size, cls + n1 + sep + n2 + n1 + n2]
             label = torch.cat((label, torch.LongTensor([-100] * (max_len + n2))), dim=0)
+            plain_label = torch.cat((plain_label, torch.LongTensor([-100] * (max_len + n2))), dim=0)
             attn_mask = [1] * (n1 + 2) + [0] * n2 + [1] * n1 + [0] * n2
         elif modality == 'text':
             label = torch.cat((label, torch.LongTensor([-100] * n2)), dim=0)
+            plain_label = torch.cat((plain_label, torch.LongTensor([-100] * n2)), dim=0)
             attn_mask = [1] * (n1 + 2) + [0] * n2
         else:
             label = torch.cat((label[1:-1], torch.LongTensor([-100] * n2)), dim=0)
+            plain_label = torch.cat((plain_label[1:-1], torch.LongTensor([-100] * n2)), dim=0)
             attn_mask = [1] * n1 + [0] * n2
         labels.append(label.unsqueeze(0))
+        plain_labels.append(plain_label.unsqueeze(0))
         attn_masks.append(attn_mask)
 
         lengths.append((n1, n2))
@@ -148,8 +153,9 @@ def mlm_single_collate_fn(batch, tokenizer, modality, img_pad_color=1.0):
         assert 0 <= mask_id <= mask_img_id and mask_ch >= 0
 
     return torch.cat(images, dim=0), torch.cat(mask_ori_images, dim=0), input_ids, torch.FloatTensor(attn_masks), \
-        torch.cat(labels, dim=0), torch.LongTensor(pos_ids), torch.LongTensor(type_ids), \
-        lengths, book_orders, torch.LongTensor(mask_ids), torch.LongTensor(mask_img_ids), mask_chs
+        torch.cat(labels, dim=0), torch.cat(plain_labels, dim=0), torch.LongTensor(pos_ids), \
+        torch.LongTensor(type_ids), lengths, book_orders, torch.LongTensor(mask_ids), \
+        torch.LongTensor(mask_img_ids), mask_chs
 
 
 def image_reconstruct_collate_fn(batch, img_pad_color=1.0):
