@@ -46,7 +46,8 @@ class ImageReconstruct(nn.Module):
             for _ in range(config['decoder_layer'])
         ])
         self.reconstruct_norm = nn.LayerNorm(768)
-        self.reconstruct_head = nn.Linear(768, input_number_classes)
+        self.reconstruct_head = nn.Linear(768, 768)
+        self.reconstruct_conv = nn.ConvTranspose2d(768, self.channel_num, kernel_size=16, stride=16)
         self.reconstruct_loss = nn.MSELoss()
 
         self.config = config
@@ -59,20 +60,27 @@ class ImageReconstruct(nn.Module):
             self.classification_loss = nn.CrossEntropyLoss()
 
     def forward_encoder(self, images):
+        batch_size, img_seq_len, img_pix_num = images.shape
         if self.config['visual_encoder'] == 'vit':
-            batch_size, img_seq_len, img_pix_num = images.shape
             img_res, img_chan = self.config['image_res'], self.channel_num
             images = images.view(batch_size * img_seq_len, img_chan, img_res, img_res)
-            vit_embeds = self.visual_encoder(images)[:, 0, :]
-            image_embeds = vit_embeds.view(batch_size, img_seq_len, 768)
+            patch_embeds = self.visual_encoder(images)  # [batch_size * img_seq_len, patch_num, hidden_size]
+            cls_embeds = patch_embeds[:, 0, :]
+            cls_embeds = cls_embeds.view(batch_size, img_seq_len, 768)
         else:
-            image_embeds = self.visual_encoder(images)
-        return image_embeds
+            cls_embeds = self.visual_encoder(images)  # [batch_size, img_seq_len, hidden_size]
+            patch_embeds = cls_embeds.view(batch_size * img_seq_len, 1, 768)
+        return cls_embeds, patch_embeds
 
     def forward_decoder(self, embeds, targets, images=None):
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
-        img_pre = self.reconstruct_head(self.reconstruct_norm(embeds))
+        batch_size, seq_len, pix_num = targets.shape
+        cls_embeds, patch_embeds = embeds[:, 0, :].view(batch_size, seq_len, 768), embeds[:, 1:, :]
+        img_pre = self.reconstruct_head(self.reconstruct_norm(patch_embeds))
+        patch_num_edge = self.config['image_res'] // 16
+        img_pre = img_pre.transpose(1, 2).view(batch_size * seq_len, 768, patch_num_edge, patch_num_edge)
+        img_pre = self.reconstruct_conv(img_pre).reshape(batch_size, seq_len, pix_num)
         loss = self.reconstruct_loss(img_pre, targets)
         # if images is None:
         #     torch.save([img_pre.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
@@ -82,7 +90,7 @@ class ImageReconstruct(nn.Module):
         # self.rec_idx += 1
         # if self.rec_idx == 10:
         #     exit()
-        return img_pre, embeds, loss
+        return img_pre, cls_embeds, loss
 
     def forward_classification(self, embeds, texts):
         batch_sz, seq_len = texts.shape
@@ -106,11 +114,11 @@ class ImageReconstruct(nn.Module):
         """
         assert mode in ['train', 'valid', 'test']
 
-        input_embeds = self.forward_encoder(images)
-        _, pre_embeds, loss_rec = self.forward_decoder(input_embeds, labels, images)
+        input_embeds, input_patch_embeds = self.forward_encoder(images)
+        _, pre_embeds, loss_rec = self.forward_decoder(input_patch_embeds, labels, images)
         # predict the character by embeds predicted
         loss_cls_pre, correct_pre, instance_pre = self.forward_classification(pre_embeds, texts)
-        tar_embeds = self.forward_encoder(labels)
+        tar_embeds, _ = self.forward_encoder(labels)
         # predict the character by embeds targeted
         loss_cls_ori, correct_ori, instance_ori = self.forward_classification(tar_embeds, texts)
         assert instance_pre == instance_ori

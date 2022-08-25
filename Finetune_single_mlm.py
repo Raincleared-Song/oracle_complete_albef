@@ -211,6 +211,14 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             if hasattr(model, 'middle_mlp'):
                 for key, val in model.middle_mlp.state_dict().items():
                     text_null_dict['middle_mlp.' + key] = val
+            if hasattr(model, 'reconstruct_conv'):
+                for key, val in model.reconstruct_conv.state_dict().items():
+                    text_null_dict['reconstruct_conv.' + key] = val
+            if hasattr(model, 'reconstruct_head'):
+                for key, val in model.reconstruct_head.state_dict().items():
+                    whole_key = 'reconstruct_head.' + key
+                    if whole_key in total_dict and total_dict[whole_key].shape != val.shape:
+                        total_dict[whole_key] = val
             total_dict.update(text_null_dict)
         model.load_state_dict(total_dict)
 

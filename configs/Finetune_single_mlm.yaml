@@ -10,7 +10,7 @@ test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_wwm.json'
 data_prefix: '/data/private/songchenyang/hanzi_filter'
 model: 'SingleMlm'
-output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm2'
+output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10'
 
 image_res: 128
 batch_size: 2
@@ -35,7 +35,7 @@ max_length: 16
 
 visual_encoder: 'vit'
 encoder_layer: 12
-image_reconstruct_factor: 0
+image_reconstruct_factor: 10.0
 decoder_layer: 8
 mlm_probability: -1
 

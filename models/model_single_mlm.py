@@ -62,7 +62,8 @@ class SingleMlm(nn.Module):
                 for _ in range(config['decoder_layer'])
             ])
             self.reconstruct_norm = nn.LayerNorm(768)
-            self.reconstruct_head = nn.Linear(768, input_number_classes)
+            self.reconstruct_head = nn.Linear(768, 768)
+            self.reconstruct_conv = nn.ConvTranspose2d(768, self.channel_num, kernel_size=16, stride=16)
             self.reconstruct_loss = nn.MSELoss()
 
         self.config = config
@@ -82,29 +83,35 @@ class SingleMlm(nn.Module):
         # self.rec_idx = 0
 
     def forward_encoder(self, images):
+        batch_size, img_seq_len, img_pix_num = images.shape
         if self.config['visual_encoder'] == 'vit':
-            batch_size, img_seq_len, img_pix_num = images.shape
             img_res, img_chan = self.config['image_res'], self.channel_num
             images = images.view(batch_size * img_seq_len, img_chan, img_res, img_res)
-            vit_embeds = self.visual_encoder(images)[:, 0, :]
-            image_embeds = vit_embeds.view(batch_size, img_seq_len, 768)
+            patch_embeds = self.visual_encoder(images)  # [batch_size * img_seq_len, patch_num, hidden_size]
+            cls_embeds = patch_embeds[:, 0, :]
+            cls_embeds = cls_embeds.view(batch_size, img_seq_len, 768)
+            patch_embeds = patch_embeds.view(batch_size, img_seq_len, patch_embeds.shape[1], 768)
         else:
-            image_embeds = self.visual_encoder(images)
-        return image_embeds
+            cls_embeds = self.visual_encoder(images)  # [batch_size, img_seq_len, hidden_size]
+            patch_embeds = cls_embeds.view(batch_size, img_seq_len, 1, 768)
+        return cls_embeds, patch_embeds
 
     def forward_decoder(self, embeds, targets):
         assert self.config['image_reconstruct_factor'] > 0
-        embeds = embeds.unsqueeze(1)
         for blk in self.reconstruct_decoder:
             embeds = blk(embeds)
-        embeds = embeds.squeeze(1)
-        embeds = self.reconstruct_head(self.reconstruct_norm(embeds))
-        loss = self.reconstruct_loss(embeds, targets)
+        batch_size, pix_num = targets.shape
+        cls_embeds, patch_embeds = embeds[:, 0, :].view(batch_size, 768), embeds[:, 1:, :]
+        img_pre = self.reconstruct_head(self.reconstruct_norm(patch_embeds))
+        patch_num_edge = self.config['image_res'] // 16
+        img_pre = img_pre.transpose(1, 2).view(batch_size, 768, patch_num_edge, patch_num_edge)
+        img_pre = self.reconstruct_conv(img_pre).reshape(batch_size, pix_num)
+        loss = self.reconstruct_loss(img_pre, targets)
         # torch.save([embeds.cpu(), targets.cpu()], f'{self.config["output_path"]}/{self.rec_idx}.pth')
         # self.rec_idx += 1
         # if self.rec_idx == 10:
         #     exit()
-        return embeds, loss
+        return img_pre, cls_embeds, loss
 
     def seq_expand(self, to_expand: torch.Tensor, lengths: list, cls_value) -> torch.Tensor:
         if self.modality != 'image':
@@ -164,16 +171,17 @@ class SingleMlm(nn.Module):
         """
         assert mode in ['train', 'valid', 'test']
 
+        input_patch_embeds = None
         if self.modality == 'cross':
             # word embedding
             word_embed = self.text_encoder.bert.embeddings.word_embeddings(input_ids)  # (batch, 1+n1+1+n2, 768)
-            visual_embed = self.forward_encoder(images)  # (batch, n1+n2, 768)
+            visual_embed, input_patch_embeds = self.forward_encoder(images)  # (batch, n1+n2, 768)
             assert word_embed.shape[1] == visual_embed.shape[1] + 2
             input_embeds = torch.cat((word_embed, visual_embed), dim=1)
         elif self.modality == 'text':
             input_embeds = self.text_encoder.bert.embeddings.word_embeddings(input_ids)
         else:
-            input_embeds = self.forward_encoder(images)
+            input_embeds, input_patch_embeds = self.forward_encoder(images)
 
         if self.extra_mlp:
             input_embeds = self.middle_mlp(input_embeds)
@@ -204,9 +212,9 @@ class SingleMlm(nn.Module):
 
         batch_sz = len(lengths)
         if self.config['image_reconstruct_factor'] > 0:
-            last_hidden = mlm_output.hidden_states[-1]
-            img_embeds = last_hidden[torch.arange(batch_sz), mask_img_ids, :]
-            loss_rec = self.forward_decoder(img_embeds, mask_ori_images)[1]
+            assert self.modality != 'text'
+            input_patch_embeds = input_patch_embeds[torch.arange(batch_sz), mask_img_ids]
+            loss_rec = self.forward_decoder(input_patch_embeds, mask_ori_images)[2]
 
         with torch.no_grad():
             prediction_scores = mlm_output.logits
