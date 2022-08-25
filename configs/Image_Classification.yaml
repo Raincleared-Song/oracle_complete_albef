@@ -3,7 +3,7 @@ test_file: ['orcal/oracle_classification_chant_valid.json']
 #test_file: ['orcal/oracle_classification_chant_test.json']
 data_prefix: '../simclr'
 model: 'ImageClassification'
-output_path: 'output/image_class_chant_resnet152_base'
+output_path: 'output/image_class_chant_vit_pre49'
 
 image_res: 128
 batch_size: 64
@@ -17,7 +17,7 @@ img_do_rotate: false
 pad_color: 0
 vocab_size: 3678
 
-visual_encoder: 'resnet152'
+visual_encoder: 'vit'
 encoder_layer: 12
 
 optimizer: {opt: adamW, lr: 1e-4, weight_decay: 0.02}

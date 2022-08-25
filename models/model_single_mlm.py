@@ -131,13 +131,14 @@ class SingleMlm(nn.Module):
         expanded_rows = torch.tensor(expanded_rows, dtype=to_expand.dtype, device=to_expand.device)
         return expanded_rows
 
-    def forward_traditional_mlm(self, plain_labels, attn_masks, pos_ids, type_ids, lengths):
+    def forward_traditional_mlm(self, plain_labels, attn_masks, pos_ids, type_ids, mask_ids, lengths):
         if self.modality != 'image':
             raise NotImplementedError('seq_expand only for image modality')
         # random mask
         tra_input_ids = self.seq_expand(plain_labels, lengths, cls_value=-2)
         tra_input_ids[tra_input_ids == -100] = self.tokenizer.pad_token_id
         tra_labels = tra_input_ids.clone()
+        tra_input_ids[torch.arange(len(lengths)), mask_ids + 1] = self.tokenizer.mask_token_id
         for bid, (text_len, _) in enumerate(lengths):
             mask_id = random.randint(1, text_len)
             assert tra_input_ids[bid, mask_id] not in [self.tokenizer.pad_token_id,
@@ -199,7 +200,7 @@ class SingleMlm(nn.Module):
             loss_plain = self.plain_loss(predict_scores, plain_labels.flatten())
 
         if self.tradition_mlm:
-            loss_tra_mlm = self.forward_traditional_mlm(plain_labels, attn_masks, pos_ids, type_ids, lengths)
+            loss_tra_mlm = self.forward_traditional_mlm(plain_labels, attn_masks, pos_ids, type_ids, mask_ids, lengths)
 
         batch_sz = len(lengths)
         if self.config['image_reconstruct_factor'] > 0:

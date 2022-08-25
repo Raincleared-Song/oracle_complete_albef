@@ -79,12 +79,16 @@ srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Imag
   --pretrained_encoder output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/checkpoint_65.pth
 srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Image_Classification.yaml --mode both --save_all=true \
   --pretrained_encoder output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/checkpoint_45.pth
+srun -G 1 -c 4 --mem 16g python3 Image_Classification.py --config ./configs/Image_Classification.yaml --mode both --save_all=true \
+  --pretrained_encoder output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm2/checkpoint_49.pth
 
-python3 Image_Classification.py --config ./output/image_class_chant_resnet152_base/config.yaml --mode test \
-  --checkpoint output/image_class_chant_resnet152_base/checkpoint_16.pth \
+python3 Image_Classification.py --config ./output/image_class_chant_vit_pre49/config.yaml --mode test \
+  --checkpoint output/image_class_chant_vit_pre49/checkpoint_02.pth \
   --test_files orcal/oracle_classification_chant_test.json --do_trans false
 
-python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm/config.yaml \
-  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm/checkpoint_36.pth --mode test \
+python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/config.yaml \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/checkpoint_45.pth --mode test \
   --test_files handa/cases_H00137zheng_see.json --do_trans false
-
+python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm/config.yaml \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm2/checkpoint_49.pth --mode test \
+  --test_files handa/cases_H00137zheng_see.json --do_trans false
