@@ -352,7 +352,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', default='./configs/Image_Reconstruct.yaml')
     parser.add_argument('--text_tokenizer', default='../guwenbert-base')  # MODIFIED
     parser.add_argument('--checkpoint', default='')
-    parser.add_argument('--resume', default=False, type=bool)
+    parser.add_argument('--resume', help='resume from a checkpoint', action='store_true')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=100, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')

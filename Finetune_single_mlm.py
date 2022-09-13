@@ -192,6 +192,8 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             if config['image_reconstruct_factor'] <= 0:
                 for key in [k for k in total_dict.keys() if k.startswith('reconstruct_')]:
                     del total_dict[key]
+            else:
+                print('reconstruct module loaded ......')
         elif config['modality'] == 'text':
             assert args.text_checkpoint != ''
             total_dict = torch.load(args.text_checkpoint, map_location='cpu')['model']
@@ -203,6 +205,8 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             if config['image_reconstruct_factor'] <= 0:
                 for key in [k for k in total_dict.keys() if k.startswith('reconstruct_')]:
                     del total_dict[key]
+            else:
+                print('reconstruct module loaded ......')
             # initialize text encoder normally
             text_null_dict = {}
             for key, val in model.text_encoder.state_dict().items():
@@ -211,14 +215,6 @@ def train(args, config, model, train_loader, test_loader=None, tokenizer=None):
             if hasattr(model, 'middle_mlp'):
                 for key, val in model.middle_mlp.state_dict().items():
                     text_null_dict['middle_mlp.' + key] = val
-            if hasattr(model, 'reconstruct_conv'):
-                for key, val in model.reconstruct_conv.state_dict().items():
-                    text_null_dict['reconstruct_conv.' + key] = val
-            if hasattr(model, 'reconstruct_head'):
-                for key, val in model.reconstruct_head.state_dict().items():
-                    whole_key = 'reconstruct_head.' + key
-                    if whole_key in total_dict and total_dict[whole_key].shape != val.shape:
-                        total_dict[whole_key] = val
             total_dict.update(text_null_dict)
         model.load_state_dict(total_dict)
 

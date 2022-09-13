@@ -11,7 +11,7 @@ srun -G 1 -c 4 --mem 16g python3 Finetune_single_mlm.py --config ./configs/Finet
 python Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode both --save_all=true
 srun -G 1 -c 4 --mem 16g python3 Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode both --save_all=true
 python Image_Reconstruct.py --config ./configs/Image_Reconstruct.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all/checkpoint_29.pth
-python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd/config.yaml --mode test --checkpoint output/tra_finetune_single_mlm_p0_load_cross01/checkpoint_53.pth
+python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_89.pth
 python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_cls_lr4_upd/checkpoint_43.pth
 python Image_Reconstruct.py --config ./output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_lr4_upd/config.yaml --mode test --checkpoint output/tra_image_reconstruct_vit_all_mk25_ranoi_rot_lr4_upd/checkpoint_56.pth
 
@@ -89,6 +89,6 @@ python3 Image_Classification.py --config ./output/image_class_chant_vit_pre49/co
 python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/config.yaml \
   --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_new/checkpoint_45.pth --mode test \
   --test_files handa/cases_H00137zheng_see.json --do_trans false
-python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm/config.yaml \
-  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm2/checkpoint_49.pth --mode test \
-  --test_files handa/cases_H00137zheng_see.json --do_trans false
+python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4_89/config.yaml \
+  --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4_89/checkpoint_53.pth --mode test \
+  --test_files handa/cases_H00137zheng_see.json --do_trans false --device cuda:1

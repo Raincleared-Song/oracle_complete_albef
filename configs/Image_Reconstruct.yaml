@@ -3,7 +3,7 @@ train_file: ['handa/data_complete_tra_train.json']
 #test_file: ['handa/cases_com_tra_mid.json']
 test_file: ['handa/log_case_test_52_data.json']
 bert_config: './configs/config_roberta.json'
-data_prefix: '/data/private/songchenyang/hanzi_filter'
+data_prefix: '/home3/private/songchenyang/hanzi_filter'
 model: 'ImageReconstruct'
 output_path: 'output/tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new'
 
@@ -27,4 +27,4 @@ image_reconstruct_factor: 10.0
 image_classification_factor: [1.0, 1.0]
 
 optimizer: {opt: adamW, lr: 1e-4, weight_decay: 0.02}
-schedular: {sched: cosine, lr: 1e-4, epochs: 90, min_lr: 1e-4, decay_rate: 1, warmup_lr: 1e-4, warmup_epochs: 20, cooldown_epochs: 0}
+schedular: {sched: cosine, lr: 1e-4, epochs: 120, min_lr: 1e-4, decay_rate: 1, warmup_lr: 1e-4, warmup_epochs: 20, cooldown_epochs: 0}

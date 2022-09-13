@@ -411,3 +411,42 @@ continue from epoch 52 (all_noinit), epoch 53, mlmres
 continue from epoch 52 (all_noinit), mlm2, epoch 53, mlmres2
 86.92 / 93.07 / 94.26 / 95.12
 83.31 / 93.69 / 94.84 / 95.57
+
+n6. tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10
+batch 2, no-init, predict all true, mlm, reconstruct true epoch 45
+87.33 / 93.02 / 94.44 / 95.56
+84.04 / 93.63 / 94.54 / 95.39
+
+n5. tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4
+batch 4, no-init, predict all true, mlm, reconstruct true epoch 45
+87.98 / 93.22 / 94.47 / 95.48
+84.16 / 92.90 / 94.36 / 95.27
+38.46 / 38.46 / 53.85 / 61.54
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_28.pth, epoch 45
+87.71 / 93.43 / 94.77 / 95.81
+85.50 / 94.24 / 95.51 / 96.54
+46.15 / 53.85 / 53.85 / 53.85
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_82.pth, epoch 53
+88.57 / 93.51 / 94.62 / 95.53
+84.28 / 93.63 / 95.21 / 96.06
+46.15 / 46.15 / 46.15 / 46.15
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_89.pth, epoch 53 ***
+88.52 / 93.51 / 94.78 / 95.94
+84.22 / 93.51 / 94.60 / 95.75
+46.15 / 46.15 / 53.85 / 61.54
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_119.pth, epoch 51
+88.77 / 93.84 / 94.91 / 95.86
+82.77 / 93.45 / 95.08 / 96.36
+53.85 / 53.85 / 53.85 / 53.85
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_143.pth, epoch 48
+88.62 / 93.82 / 95.06 / 95.87
+83.68 / 93.69 / 94.90 / 95.75
+30.77 / 53.85 / 61.54 / 61.54
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_148.pth, epoch 48
+88.78 / 94.26 / 95.27 / 96.10
+84.28 / 93.63 / 94.66 / 95.45
+30.77 / 38.46 / 46.15 / 53.85
+tra_image_reconstruct_vit_all_mk25_ranoi_cls_lr4_upd_new/checkpoint_168.pth, epoch 59, 61
+88.68 / 93.72 / 94.98 / 95.89, 89.12 / 94.13 / 95.27 / 96.09
+83.50 / 92.90 / 93.99 / 95.02, 83.37 / 92.72 / 94.11 / 95.27
+38.46 / 53.85 / 53.85 / 53.85, 30.77 / 46.15 / 53.85 / 61.54

@@ -9,6 +9,7 @@ def main():
     parser.add_argument('--metric', '-m', help='metric', default='valid_global_accuracy', type=str)
     parser.add_argument('--reverse', '-r', help='if set, choose the lowest metric', action='store_true')
     parser.add_argument('--remove', '-rm', help='if set, remove redundant checkpoints', action='store_true')
+    parser.add_argument('--device', '-d', help='the device for test', type=str)
     parser.add_argument('--use_test', action='store_true', help='if set, use log_test.txt')
     parser.add_argument('--double', action='store_true', help='if set, test both do_trans')
     parser.add_argument('--validation', action='store_true', help='if set, test on validation set')
@@ -59,7 +60,7 @@ def main():
 
     # 合并后的完整测试集，1648
     print('------', 'testing 1648 files do_trans false', '------')
-    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                      f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                      f' --test_files handa/cases_com_tra_mid_combine.json --do_trans false') == 0
     assert os.system(f'mv output/{args.task}/logs_test/log_case_test_{best_epoch}.txt'
@@ -71,19 +72,19 @@ def main():
     # 验证集
     if args.validation:
         print('------', 'testing log_test_52 do_trans false', '------')
-        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                          f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                          f' --test_files handa/log_case_test_52_data.json --do_trans false') == 0
 
     # 训练集残字，1067
     if args.double:
         print('------', 'testing 1067 files do_trans true', '------')
-        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                          f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                          f' --test_files handa/cases_com_tra_mid_new.json --do_trans true') == 0
 
     print('------', 'testing 1067 files do_trans false', '------')
-    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                      f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                      f' --test_files handa/cases_com_tra_mid_new.json --do_trans false') == 0
     assert os.system(f'mv output/{args.task}/logs_test/log_case_test_{best_epoch}.txt'
@@ -92,12 +93,12 @@ def main():
     # 上下文推断，残字部分（小），156
     if args.double:
         print('------', 'testing 156 files do_trans true', '------')
-        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+        assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                          f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                          f' --test_files handa/cases_com_tra_mid_new_not_perfect.json --do_trans true') == 0
 
     print('------', 'testing 156 files do_trans false', '------')
-    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                      f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                      f' --test_files handa/cases_com_tra_mid_new_not_perfect.json --do_trans false') == 0
     assert os.system(f'mv output/{args.task}/logs_test/log_case_test_{best_epoch}.txt'
@@ -105,7 +106,7 @@ def main():
 
     # 汉达方框字，525
     print('------', 'testing 525 files do_trans false', '------')
-    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                      f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                      f' --test_files handa/data_filter_tra_all_com_mid.json --do_trans false') == 0
     assert os.system(f'mv output/{args.task}/logs_test/log_case_test_{best_epoch}.txt'
@@ -113,7 +114,7 @@ def main():
 
     # 上下文推断，完整版，586
     print('------', 'testing 586 files do_trans false', '------')
-    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml'
+    assert os.system(f'python Finetune_single_mlm.py --config output/{args.task}/config.yaml --device {args.device}'
                      f' --checkpoint output/{args.task}/checkpoint_{best_epoch:02}.pth --mode test'
                      f' --test_files handa/cases_com_tra_mid.json --do_trans false') == 0
     assert os.system(f'mv output/{args.task}/logs_test/log_case_test_{best_epoch}.txt'
