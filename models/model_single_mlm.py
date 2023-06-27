@@ -1,26 +1,30 @@
 import torch
 import random
 import torch.nn as nn
+from utils import load_json
 from functools import partial
-from transformers import BertConfig, BertForMaskedLM
+from transformers import BertConfig, RobertaConfig, BertForMaskedLM, RobertaForMaskedLM
 from models.vit import interpolate_pos_embed, VisionTransformer, Block
 
 
 class SingleMlm(nn.Module):
     """
-    单个 BERT 的跨模态模型
+    单个 BERT / RoBERTa 的跨模态模型
     """
     def __init__(self, text_encoder=None, tokenizer=None, config=None, init_deit=True, distributed=False):
         super().__init__()
 
         self.tokenizer = tokenizer
-        bert_config = BertConfig.from_json_file(config['bert_config'])
+        self.model_type = load_json(config['bert_config'])['model_type']
+        config_cls = RobertaConfig if 'roberta' in self.model_type else BertConfig
+        model_cls = RobertaForMaskedLM if 'roberta' in self.model_type else BertForMaskedLM
+        model_config = config_cls.from_json_file(config['bert_config'])
         self.distributed = distributed
         self.modality = config['modality'] if 'modality' in config else 'cross'
         if text_encoder:
-            self.text_encoder = BertForMaskedLM.from_pretrained(text_encoder, config=bert_config)
+            self.text_encoder = model_cls.from_pretrained(text_encoder, config=model_config)
         else:
-            self.text_encoder = BertForMaskedLM(config=bert_config)
+            self.text_encoder = model_cls(config=model_config)
         if 'topk' in config:
             assert config['mlm_probability'] <= 0
             self.topk = config['topk']
@@ -172,14 +176,15 @@ class SingleMlm(nn.Module):
         assert mode in ['train', 'valid', 'test']
 
         input_patch_embeds = None
+        sub_model = self.text_encoder.roberta if 'roberta' in self.model_type else self.text_encoder.bert
         if self.modality == 'cross':
             # word embedding
-            word_embed = self.text_encoder.bert.embeddings.word_embeddings(input_ids)  # (batch, 1+n1+1+n2, 768)
+            word_embed = sub_model.embeddings.word_embeddings(input_ids)  # (batch, 1+n1+1+n2, 768)
             visual_embed, input_patch_embeds = self.forward_encoder(images)  # (batch, n1+n2, 768)
             assert word_embed.shape[1] == visual_embed.shape[1] + 2
             input_embeds = torch.cat((word_embed, visual_embed), dim=1)
         elif self.modality == 'text':
-            input_embeds = self.text_encoder.bert.embeddings.word_embeddings(input_ids)
+            input_embeds = sub_model.embeddings.word_embeddings(input_ids)
         else:
             input_embeds, input_patch_embeds = self.forward_encoder(images)
 

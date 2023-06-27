@@ -31,6 +31,7 @@ from optim import create_optimizer
 name_to_model = {
     'ImageClassification': ImageClassification,
 }
+label_to_char = utils.load_json('../simclr/orcal/oracle_classification_chant_label_to_char.json')
 
 
 def train_epoch(args, model, data_loader, optimizer, epoch, warmup_steps, device, scheduler, config):
@@ -234,7 +235,7 @@ def test_epoch(args, model, data_loader, epoch, device, config):
 
         assert len(labels) == len(predict_result) == len(image_paths)
         for lab, res, image_p in zip(labels, predict_result, image_paths):
-            f_case.write(f'{lab}\t{int(res)}\t{image_p}\n')
+            f_case.write(f'{lab}\t{int(res)}\t{label_to_char[int(res)]}\t{image_p}\n')
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()

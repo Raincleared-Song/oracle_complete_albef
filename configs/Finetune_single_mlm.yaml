@@ -8,9 +8,11 @@ test_file: ['handa/log_case_test_52_data.json']
 #test_file: ['handa/cases_com_tra_mid_new_not_perfect.json']  # 156 not perfect complete data
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }
 bert_config: './configs/config_wwm.json'
-data_prefix: '/home3/private/songchenyang/hanzi_filter'
+data_prefix: '/data/private/songchenyang/hanzi_filter'
 model: 'SingleMlm'
 output_path: 'output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4'
+# vocab_file: ../chinese-bert-wwm-ext/vocab.txt
+# vocab_size: 4116
 
 image_res: 128
 batch_size: 4

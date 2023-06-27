@@ -75,3 +75,9 @@ data: 80% for train, chant base, second-stage checkpoint_49.pth
 trans: 0.25 mask, -1 noise
 chosen metric: 78.48 chosen_epoch: 2
 test result: no_trans, 90.92
+
+14. image_class_chant_vit_pre_second89
+encoder: output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4_89/checkpoint_53.pth
+chosen metric: 81.49 chosen_epoch: 2 last epoch: 25
+{'test_total_loss': '0.4459', 'test_correct_num': '040783',
+'test_instance_num': '044598', 'test_global_accuracy': 91.45, 'epoch': 2}

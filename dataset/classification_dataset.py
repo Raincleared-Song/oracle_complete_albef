@@ -47,8 +47,9 @@ class ImageClassificationDataset(Dataset):
         img_res = config['image_res']
         image_p, label, src = char['img'], char['lab'], char['src']
         assert 0 <= label < config['vocab_size']
-        src = ImageClassificationDataset.src_to_idx[src]
-        image_p = os.path.join(ImageClassificationDataset.idx_to_dir[src], image_p)
+        if src in ImageClassificationDataset.src_to_idx:
+            src = ImageClassificationDataset.src_to_idx[src]
+            image_p = os.path.join(ImageClassificationDataset.idx_to_dir[src], image_p)
         image = Image.open(image_p).convert(config['img_mode'])
         image = resize_pad_image(image, (img_res, img_res), do_trans=config['img_random_transform'],
                                  reverse=(src == 'wzb'), pad_color=0, mask_ratio=config['img_mask_ratio'],

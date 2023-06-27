@@ -9,7 +9,7 @@ def main():
     parser.add_argument('--metric', '-m', help='metric', default='valid_global_accuracy', type=str)
     parser.add_argument('--reverse', '-r', help='if set, choose the lowest metric', action='store_true')
     parser.add_argument('--remove', '-rm', help='if set, remove redundant checkpoints', action='store_true')
-    parser.add_argument('--device', '-d', help='the device for test', type=str)
+    parser.add_argument('--device', '-d', help='the device for test', type=str, default='cuda:0')
     parser.add_argument('--use_test', action='store_true', help='if set, use log_test.txt')
     parser.add_argument('--double', action='store_true', help='if set, test both do_trans')
     parser.add_argument('--validation', action='store_true', help='if set, test on validation set')

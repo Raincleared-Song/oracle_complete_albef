@@ -292,10 +292,12 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     model.eval()
     mod = 'valid' if args.mode == 'both' else 'test'
 
-    save_cases, f_case = tokenizer is not None, None
+    save_cases, f_case, f_list = tokenizer is not None, None, None
     if save_cases:
         f_case = open(os.path.join(config['output_path'], f'logs_{mod}',
                                    f'log_case_{mod}_{epoch}.txt'), 'w', encoding='utf-8')
+        f_list = open(os.path.join(config['output_path'], f'logs_{mod}',
+                                   f'log_case_{mod}_{epoch}_list.txt'), 'w', encoding='utf-8')
 
     metric_logger = utils.MetricLogger(
         f_path=os.path.join(config['output_path'], f"log_{mod}_metric.txt"), delimiter="  ")
@@ -365,17 +367,20 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
                            for ch, wch, idx in wrong_chars]
             f_case.write('Wrong: ' + str(wrong_chars) + '\n\n')
             max_k = max(config['topk'])
-            assert len(book_orders) == len(ori_inputs) == len(topk_ids) == len(topk_scores)
-            for sent, book_order, topk_id, topk_score in zip(ori_inputs, book_orders, topk_ids, topk_scores):
+            assert len(book_orders) == len(ori_inputs) == len(topk_ids) == len(topk_scores) == len(mask_chs)
+            for sent, book_order, topk_id, topk_score, mask_ch in zip(ori_inputs, book_orders, topk_ids, topk_scores, mask_chs):
                 f_case.write(str(data_idx) + '\t' +
                              str(tokenizer.convert_ids_to_tokens(sent)) + '\t' + book_order + '\n')
                 topk_chs, topk_pairs = tokenizer.convert_ids_to_tokens(topk_id), []
                 for ch, score in zip(topk_chs, topk_score):
                     topk_pairs.append((ch, round(score, 4)))
                 f_case.write(f'Top{max_k}: ' + str(topk_pairs) + '\n')
+                mask_ch = tokenizer.convert_ids_to_tokens(mask_ch)
+                f_list.write(f'{data_idx}\t{book_order}\t{topk_chs[0]}\t{topk_score[0]}\t{mask_ch}\n')
                 data_idx += 1
             f_case.write('------------------------------\n\n')
         f_case.flush()
+        f_list.flush()
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -393,6 +398,7 @@ def test_epoch(args, model, data_loader, epoch, device, config, tokenizer=None):
     print(f'topks: {config["topk"]} hits: {" / ".join(hits)}')
 
     if save_cases:
+        f_list.close()
         f_case.close()
 
     return res
