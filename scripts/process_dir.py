@@ -1,6 +1,6 @@
 import os
 import argparse
-from utils import save_json
+from utils import load_json, save_json
 
 
 def main():
@@ -30,5 +30,36 @@ def main():
     save_json(com_ret, 'handa/H32384_complete.json')
 
 
+def main2():
+    input_dir = 'handa/H32384_detection_with_label'
+    images = [img for img in os.listdir(input_dir) if img.endswith('.jpg')]
+    images.sort(key=lambda x: int(x.replace('-', '_').split('_')[2]))
+
+    with open(f'{input_dir}/labels.txt', encoding='utf-8') as fin:
+        lines = fin.readlines()
+    assert len(lines) == len(images)
+    ret = []
+    all_chars, characters = [], []
+    chat_to_label = load_json('handa/oracle_classification_chant_char_to_label.json')
+    for idx, (img, line) in enumerate(zip(images, lines)):
+        line = line.strip()
+        to_complete = '——' in line
+        ch = line.split('——')[0]
+        img = os.path.join(input_dir, img)
+        all_chars.append((img, ch, to_complete, idx))
+        characters.append((ch, img))
+        if to_complete:
+            ret.append({'img': img, 'src': 'other', 'lab': chat_to_label[ch]})
+    save_json([ret], 'handa/H32384_classification_with_label.json')
+    ret = []
+    for img, ch, to_complete, idx in all_chars:
+        if to_complete:
+            ret.append(({
+                'book_name': 'H32384', 'row_order': 0, 'characters': characters,
+            }, idx))
+    save_json(ret, 'handa/H32384_complete_with_label.json')
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    main2()

@@ -121,8 +121,9 @@ def process_single_complete(book: dict, config):
     img_res, img_mode, pad_color = config['image_res'], config['img_mode'], config['pad_color']
     res_images, res_caption = [], []
     for cid, (ch, image) in enumerate(book['characters']):
-        assert os.path.exists(os.path.join(config['data_prefix'], image))
-        cur_img = Image.open(os.path.join(config['data_prefix'], image)).convert(img_mode)
+        image_path = os.path.join(config['data_prefix'], image)
+        assert os.path.exists(image_path), image_path
+        cur_img = Image.open(image_path).convert(img_mode)
         res_caption.append(ch)
         pad_img = resize_pad_image(cur_img, (img_res, img_res), do_trans=False, pad_color=pad_color)
         pad_mask_img = resize_pad_image(cur_img, (img_res, img_res), do_trans=config['img_random_transform'],

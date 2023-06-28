@@ -68,7 +68,7 @@ class ImageClassification(nn.Module):
         loss_cls = self.classification_loss(predict_embeds, labels)
         with torch.no_grad():
             predict_result = torch.max(predict_embeds, dim=1)[1]
-            correct_num = torch.sum(torch.logical_and(labels, predict_result)).item()
+            correct_num = torch.sum(torch.eq(labels, predict_result)).item()
         assert correct_num <= instance_num
         return loss_cls, predict_result, correct_num, instance_num
 

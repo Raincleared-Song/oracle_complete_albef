@@ -95,7 +95,7 @@ python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_im
 
 python3 Image_Classification.py --config ./output/image_class_chant_vit_pre_second89/config.yaml --mode test \
   --checkpoint output/image_class_chant_vit_pre_second89/checkpoint_02.pth \
-  --test_files handa/H32384_classification.json --do_trans false
+  --test_files handa/H32384_classification_with_label.json --do_trans false
 python Finetune_single_mlm.py --config output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4_89/config.yaml \
   --checkpoint output/tra_finetune_single_mlm_p0_load_image_mk25_unrec_wwm_all_noinit_mlm_rec10_b4_89/checkpoint_53.pth --mode test \
-  --test_files handa/H32384_complete.json --do_trans false
+  --test_files handa/H32384_complete_with_label.json --do_trans false
